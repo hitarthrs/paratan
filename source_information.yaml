@@ -1,0 +1,25 @@
+source:
+  type: "Uniform"  # Options: "Uniform", "1D_Varying", "2D_Varying"
+  power_output: 10  # Power in MW
+
+  # Uniform source settings (only used if type is "Uniform")
+  uniform:
+    length: 100  # Length of the source region (cm)
+    radius: 50   # Radius of the source region (cm)
+
+  # 1D Varying source settings (only used if type is "1D_Varying")
+  source_1D:
+    file_name: "1d_source_distribution.csv"  # CSV file containing the 1D source distribution
+    radius: 50  # Radius of the cylindrical source (cm)
+
+  # 2D Varying source settings (only used if type is "2D_Varying")
+  source_2D:
+    file_name: "2d_source_distribution.csv"  # CSV file containing the 2D source distribution
+
+
+settings:
+  batches: 34
+  particles_per_batch: 32
+  weight_windows: True
+  statepoint_frequency: 3
+  photon_transport: True
