@@ -83,7 +83,7 @@ def plot_geom_and_source(model, source_sites, cell_colors=None):
 
         plt.show()
 
-def vacuum_vessel_region(first_plane_distance, second_plane_distance, outermost_plane_distance, central_radius, outer_radius, angle_degrees):
+def vacuum_vessel_region(first_plane_distance, outermost_plane_distance, central_radius, outer_radius, angle_degrees):
 
     """Generates an OpenMC region in the shape of a typical vacuum vessel shape. Generates a symmetrical shape around the midplane with the following structure:
     1. A central cylindrical section.
@@ -96,7 +96,6 @@ def vacuum_vessel_region(first_plane_distance, second_plane_distance, outermost_
     ------------
 
     first_plane_distance (cm): Distance of the end of the first cylindrical section from the midplane
-    second_place_distance (cm) : Distance of the end of the conical section from the midplane
     outermost_plane distance (cm) : Distance of the end of the last cylindrical section from the midplane
     central_radius (cm) : Radius of the first (central) cylindrical section
     outer_radius (cm) : Radius of the outer cylindrical section
@@ -104,13 +103,16 @@ def vacuum_vessel_region(first_plane_distance, second_plane_distance, outermost_
 
     """ 
 
-    if (first_plane_distance >= second_plane_distance | second_plane_distance >= outermost_plane_distance):
-        raise ValueError("Check distances of planes from the midplane. Ideal order is first_plane_distance < second_plane_distance < outermost_plane_distance.")
+    # if (first_plane_distance >= second_plane_distance | second_plane_distance >= outermost_plane_distance):
+    #     raise ValueError("Check distances of planes from the midplane. Ideal order is first_plane_distance < second_plane_distance < outermost_plane_distance.")
     
     if (central_radius < outer_radius):
         raise ValueError("The radius of central cylinder should not be lesser than the radius of the outer cylindrical section.")
     
     angle = (np.pi/180)*angle_degrees
+
+    second_plane_distance = first_plane_distance + (central_radius - outer_radius) * np.tan(angle)
+
     central_cylinder_left_plane = openmc.ZPlane(-first_plane_distance)
     central_cylinder_right_plane = openmc.ZPlane(first_plane_distance)
     central_cell_cylinder = openmc.ZCylinder(r = central_radius)

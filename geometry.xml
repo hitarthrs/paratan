@@ -35,8 +35,8 @@
   <surface coeffs="100" id="8" type="z-plane"/>
   <surface coeffs="0.0 0.0 60" id="9" type="z-cylinder"/>
   <surface coeffs="-500" id="10" type="z-plane"/>
-  <surface coeffs="-325" id="11" type="z-plane"/>
-  <surface coeffs="325" id="12" type="z-plane"/>
+  <surface coeffs="-110.10168455465333" id="11" type="z-plane"/>
+  <surface coeffs="110.10168455465333" id="12" type="z-plane"/>
   <surface coeffs="500" id="13" type="z-plane"/>
   <surface coeffs="0.0 0.0 22.3" id="14" type="z-cylinder"/>
   <surface coeffs="0.0 0.0 -323.92304845413264 0.07179676972449082" id="15" type="z-cone"/>
@@ -47,8 +47,8 @@
   <surface coeffs="100" id="20" type="z-plane"/>
   <surface coeffs="0.0 0.0 60.5" id="21" type="z-cylinder"/>
   <surface coeffs="-500" id="22" type="z-plane"/>
-  <surface coeffs="-325" id="23" type="z-plane"/>
-  <surface coeffs="325" id="24" type="z-plane"/>
+  <surface coeffs="-110.10168455465333" id="23" type="z-plane"/>
+  <surface coeffs="110.10168455465333" id="24" type="z-plane"/>
   <surface coeffs="500" id="25" type="z-plane"/>
   <surface coeffs="0.0 0.0 22.8" id="26" type="z-cylinder"/>
   <surface coeffs="0.0 0.0 -325.78907385791706 0.07179676972449082" id="27" type="z-cone"/>
@@ -59,8 +59,8 @@
   <surface coeffs="100" id="32" type="z-plane"/>
   <surface coeffs="0.0 0.0 66.0" id="33" type="z-cylinder"/>
   <surface coeffs="-500" id="34" type="z-plane"/>
-  <surface coeffs="-325" id="35" type="z-plane"/>
-  <surface coeffs="325" id="36" type="z-plane"/>
+  <surface coeffs="-110.10168455465333" id="35" type="z-plane"/>
+  <surface coeffs="110.10168455465333" id="36" type="z-plane"/>
   <surface coeffs="500" id="37" type="z-plane"/>
   <surface coeffs="0.0 0.0 28.3" id="38" type="z-cylinder"/>
   <surface coeffs="0.0 0.0 -346.3153532995459 0.07179676972449082" id="39" type="z-cone"/>

@@ -44,7 +44,7 @@ bottleneck_plane_distance = bottleneck_cylinder.get("plane_distance")
 
 
 
-vv_layer_innermost_region = vacuum_vessel_region(first_vv_plane_from_midplane, bottleneck_plane_distance, machine_length_from_midplane, vacuum_chamber_radius, bottleneck_cylinder_radius, vv_conical_angle) # & ~ slanted_ports
+vv_layer_innermost_region = vacuum_vessel_region(first_vv_plane_from_midplane, machine_length_from_midplane, vacuum_chamber_radius, bottleneck_cylinder_radius, vv_conical_angle) # & ~ slanted_ports
 vv_layer_innermost_cell = openmc.Cell(1000, region=vv_layer_innermost_region, fill= m.vacuum)
 
 universe_machine.add_cells([vv_layer_innermost_cell])
@@ -68,7 +68,7 @@ vacuum_section_regions = [vv_layer_innermost_region]
 vacuum_section_cells = []
 
 for i in range(1, len(vacuum_vessel_cylinders_radii)):
-    vv_layer = vacuum_vessel_region(first_vv_plane_from_midplane, bottleneck_plane_distance, machine_length_from_midplane, vacuum_vessel_cylinders_radii[i], bottleneck_cylinders_radii[i], vv_conical_angle)
+    vv_layer = vacuum_vessel_region(first_vv_plane_from_midplane, machine_length_from_midplane, vacuum_vessel_cylinders_radii[i], bottleneck_cylinders_radii[i], vv_conical_angle)
     vacuum_section_regions.append(vv_layer)
     add_region = vv_layer & ~vacuum_section_regions[i-1] # & ~slanted_ports
     room_region &= ~add_region
