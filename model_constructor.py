@@ -150,7 +150,6 @@ universe_machine.add_cells(central_cell_cells)
 
 # ________________________________________ LF COILS ________________________________________ #
 
-# Loop through each LF coil center position to define its geometry
 
 lf_coil = input_data.get("lf_coil", [])
 
@@ -209,13 +208,19 @@ for i in range(len(lf_coil_centers)):
 # --- Determine the HF Coil Center Position ---
 # The HF coil is positioned along the Z-axis, starting from the central cell length,
 # with additional spacing for the shield, casing, and half the coil thickness.
+    
+hf_coil = input_data.get("hf_coil", [])
+
+hf_coil_shield = hf_coil.get("shield",[])
+hf_coil_magnet = hf_coil.get("magnet", [])
+
 
 hf_coil_center_z0 = (
     central_cell_length_from_midplane  
-    + param.hf_shield_central_cell_gap           # Gap between HF shield and central cell
-    + param.hf_coil_shield_axial_thickness[0]    # Axial thickness of the shield (toward midplane)
+    + hf_coil_shield["shield_central_cell_gap"]           # Gap between HF shield and central cell
+    + hf_coil_shield["axial_thickness"][0]    # Axial thickness of the shield (toward midplane)
     + np.sum(param.hf_coil_casing_thicknesses)   # Total casing thickness
-    + param.hf_coil_axial_thickness / 2          # Half of the magnet's axial thickness
+    + hf_coil_magnet["axial_thickness"] / 2          # Half of the magnet's axial thickness
 )
 
 # --- Define Casing Layer Thicknesses ---
@@ -227,8 +232,8 @@ layers = param.hf_coil_casing_thicknesses
 # and an additional radial gap before the casing.
 inner_radius_magnet_casings = (
     bottleneck_cylinders_radii[-1]               # Outermost bottleneck cylinder radius
-    + param.hf_coil_shield_radial_thickness[0]   # Shield thickness (toward central axis)
-    + param.radial_gap_before_casing             # Extra spacing before the casing begins
+    + hf_coil_shield["radial_thickness"][0]   # Shield thickness (toward central axis)
+    + hf_coil_shield["radial_gap_before_casing "]            # Extra spacing before the casing begins
 )
 
 # --- Define Regions for Left and Right HF Coils ---
@@ -237,16 +242,16 @@ inner_radius_magnet_casings = (
 shield_regions_right = nested_cylindrical_shells(
     hf_coil_center_z0, 
     inner_radius_magnet_casings, 
-    param.hf_coil_radial_thickness, 
-    param.hf_coil_axial_thickness, 
+    hf_coil_magnet["radial_thickness"], 
+    hf_coil_magnet["axial_thickness"], 
     layers, layers, layers
 )
 
 shield_regions_left = nested_cylindrical_shells(
     -hf_coil_center_z0, 
     inner_radius_magnet_casings, 
-    param.hf_coil_radial_thickness, 
-    param.hf_coil_axial_thickness, 
+    hf_coil_magnet["radial_thickness"], 
+    hf_coil_magnet["axial_thickness"], 
     layers, layers, layers
 )
 
@@ -254,8 +259,8 @@ shield_regions_left = nested_cylindrical_shells(
 # The magnet region consists of the **innermost layer** of the left and right coil casings.
 hf_magnet_region_left = shield_regions_left[0]
 hf_magnet_region_right = shield_regions_right[0]
-hf_magnet_left_cell = openmc.Cell(6101, region=hf_magnet_region_left, fill=param.hf_coil_material)
-hf_magnet_right_cell = openmc.Cell(6102, region=hf_magnet_region_right, fill=param.hf_coil_material)
+hf_magnet_left_cell = openmc.Cell(6101, region=hf_magnet_region_left, fill=getattr(m, hf_coil_magnet["material"]))
+hf_magnet_right_cell = openmc.Cell(6102, region=hf_magnet_region_right, fill=getattr(m, hf_coil_magnet["material"]))
 
 # Add the HF magnet to the simulation
 universe_machine.add_cells([hf_magnet_left_cell, hf_magnet_right_cell])
