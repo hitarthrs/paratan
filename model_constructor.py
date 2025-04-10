@@ -8,7 +8,7 @@ from source_lib import *
 import yaml
 
 
-with open('parametric_input.yaml', 'r') as f:
+with open('input_files/parametric_input.yaml', 'r') as f:
     input_data = yaml.safe_load(f)
 
 ################### Universe that contains the ANVIL machine #####################
@@ -44,7 +44,7 @@ bottleneck_plane_distance = bottleneck_cylinder.get("plane_distance")
 
 
 
-vv_layer_innermost_region = vacuum_vessel_region(first_vv_plane_from_midplane, bottleneck_plane_distance, machine_length_from_midplane, vacuum_chamber_radius, bottleneck_cylinder_radius, vv_conical_angle) & ~ slanted_ports
+vv_layer_innermost_region = vacuum_vessel_region(first_vv_plane_from_midplane, bottleneck_plane_distance, machine_length_from_midplane, vacuum_chamber_radius, bottleneck_cylinder_radius, vv_conical_angle) # & ~ slanted_ports
 vv_layer_innermost_cell = openmc.Cell(1000, region=vv_layer_innermost_region, fill= m.vacuum)
 
 universe_machine.add_cells([vv_layer_innermost_cell])
@@ -56,7 +56,7 @@ room_region &= ~vv_layer_innermost_region
 structure = vacuum_vessel.get("structure", {})
 
 structural_thicknesses = [properties.get("thickness") for layer_name, properties in structure.items()]
-structural_materials = [getattr(m, properties.get("materials")) for layer_name, properties in structure.items()]
+structural_materials = [getattr(m, properties.get("material")) for layer_name, properties in structure.items()]
 
 vacuum_vessel_cylinders_radii = np.cumsum([vacuum_chamber_radius] + structural_thicknesses)
 bottleneck_cylinders_radii = np.cumsum([bottleneck_cylinder_radius] + structural_thicknesses)
@@ -70,7 +70,7 @@ vacuum_section_cells = []
 for i in range(1, len(vacuum_vessel_cylinders_radii)):
     vv_layer = vacuum_vessel_region(first_vv_plane_from_midplane, bottleneck_plane_distance, machine_length_from_midplane, vacuum_vessel_cylinders_radii[i], bottleneck_cylinders_radii[i], vv_conical_angle)
     vacuum_section_regions.append(vv_layer)
-    add_region = vv_layer & ~vacuum_section_regions[i-1] & ~slanted_ports
+    add_region = vv_layer & ~vacuum_section_regions[i-1] # & ~slanted_ports
     room_region &= ~add_region
     add_cell = openmc.Cell(1000+i, region=add_region, fill = vacuum_vessel_materials[i])
     vacuum_section_cells.append(add_cell)
@@ -121,8 +121,8 @@ for i in range(len(central_cell_cylinders_radii)):
 central_cell_cells = [
     openmc.Cell(
         2000,
-        region=(-right_plane_central_cell & +left_plane_central_cell & ~vacuum_section_regions[-1] & -central_cell_cylinders[0])
-                & ~vertical_port_region & ~slanted_ports,
+        region=(-right_plane_central_cell & +left_plane_central_cell & ~vacuum_section_regions[-1] & -central_cell_cylinders[0]),
+                #& ~vertical_port_region & ~slanted_ports,
         fill=central_cell_layers[0][1]  # Assign material from layer data
     )
 ]
@@ -135,7 +135,7 @@ for i in range(1, len(central_cell_cylinders_radii)):
     cyl_region = (-right_plane_central_cell
                   & +left_plane_central_cell
                   & -central_cell_cylinders[i]
-                  & +central_cell_cylinders[i - 1]) & ~vertical_port_region & ~slanted_ports
+                  & +central_cell_cylinders[i - 1]) #& ~vertical_port_region & ~slanted_ports
     
     new_cell = openmc.Cell(2000 + i, region=cyl_region, fill=central_cell_layers[i][1])
     
@@ -157,7 +157,8 @@ lf_coil = input_data.get("lf_coil", [])
 lf_coil_centers = lf_coil.get("positions",[])
 lf_coil_inner_dimensions = lf_coil.get("inner_dimensions", [])
 
-lf_coil_shell = lf_coil.get("shell_thickness", [])
+lf_coil_shell_thicknesses = lf_coil.get("shell_thicknesses", {})
+
 
 lf_coil_regions = []
 lf_coil_cells = []
@@ -172,10 +173,10 @@ for i in range(len(lf_coil_centers)):
         lf_coil_centers[i],      # Coil center position
         central_cell_cylinders_radii[-1],  # Outer reference radius
         lf_coil_inner_dimensions["radial_thickness"],    # Radial thickness of the coil
-        lf_coil_inner_dimensions["inner_axial_length"],  # Inner axial length
-        lf_coil_shell["front_thickness"],  # Shell front thickness
-        lf_coil_shell["back_thickness"],   # Shell back thickness
-        lf_coil_shell["axial_thickness"]   # Shell axial thickness
+        lf_coil_inner_dimensions["axial_length"],  # Inner axial length
+        lf_coil_shell_thicknesses["front"],  # Shell front thickness
+        lf_coil_shell_thicknesses["back"],   # Shell back thickness
+        lf_coil_shell_thicknesses["axial"]   # Shell axial thickness
     )
 
     # Define OpenMC cells for the coil shell (structural) and coil winding pack (inner)
@@ -303,7 +304,7 @@ hf_main_shield_right_region = hollow_cylinder_with_shell(
         param.hf_coil_shield_radial_thickness[0],  # Inner shell thickness (towards axis)
         param.hf_coil_shield_radial_thickness[1],  # Outer shell thickness (away from axis)
         param.hf_coil_shield_axial_thickness[0]    # Axial thickness of the shield (towards midplane)
-    ) 
+    )[0] 
 hf_main_shield_left_region = hollow_cylinder_with_shell(
         -hf_coil_center_z0,                     # Z-position (left side)
         inner_radius_hf_main_shield,            # Inner radius
@@ -312,7 +313,7 @@ hf_main_shield_left_region = hollow_cylinder_with_shell(
         param.hf_coil_shield_radial_thickness[0],  # Inner shell thickness (towards axis)
         param.hf_coil_shield_radial_thickness[1],  # Outer shell thickness (away from axis)
         param.hf_coil_shield_axial_thickness[0]    # Axial thickness of the shield (towards midplane)
-    )
+    )[0]
 
 
 # --- Create the HF Main Shield Cell ---
@@ -439,11 +440,11 @@ geometry.root_universe.plot(
     width=(1000, 2800), 
     pixels=(700, 700), 
     color_by='material', 
-    openmc_exec='/opt/openmc/bin/openmc'  # Specify the OpenMC executable path
+    #openmc_exec='/opt/openmc/bin/openmc'  # Specify the OpenMC executable path
 )
 
 # Save the generated plot to the results directory
-plt.savefig('/res_dir/mirror_cross_section.png', bbox_inches="tight")
+plt.savefig('mirror_cross_section.png', bbox_inches="tight")
 
 # ________________________________________ EXPORT GEOMETRY TO XML ________________________________________ #
 
@@ -455,10 +456,10 @@ geometry.export_to_xml("geometry.xml")
 
 # ________________________________________ Get the source from Settings information file ________________________________________ #
 
-with open('source_information.yaml', 'r') as f:
+with open('input_files/source_information.yaml', 'r') as f:
     source_data = yaml.safe_load(f)
 
-openmc_source = load_source_from_yaml('source_information.yaml')
+openmc_source = load_source_from_yaml('input_files/source_information.yaml')
 
 settings = openmc.Settings()
 settings.run_mode = "fixed source"
@@ -481,10 +482,13 @@ settings.weight_windows_generator = [wwg]
 settings.photon_transport = source_data['settings']['photon_transport']
 settings.source = openmc_source
 
-################### Tallies ##################################
+# Export the finalized geometry to an OpenMC XML file
+settings.export_to_xml("settings.xml")
+
+# ################### Tallies ##################################
 
 
-hf_coil_cell = hf_magnet_region_right
+# hf_coil_cell = hf_magnet_region_right
 
 
 
