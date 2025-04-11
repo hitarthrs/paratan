@@ -6,10 +6,10 @@ import material as m
 import matplotlib.pyplot as plt
 # ________________________________________ Get the source from Settings information file ________________________________________ #
 
-with open('source_information.yaml', 'r') as f:
+with open('input_files/source_information.yaml', 'r') as f:
     source_data = yaml.safe_load(f)
 
-openmc_source = load_source_from_yaml('source_information.yaml')
+openmc_source = load_source_from_yaml('input_files/source_information.yaml')
 
 settings = openmc.Settings()
 settings.run_mode = "fixed source"
@@ -113,7 +113,7 @@ def hollow_mesh_from_domain(region, dimensions= [10, 10, 10], phi_grid_bounds=(0
 
 
 
-with open('parametric_input.yaml', 'r') as f:
+with open('input_files/parametric_input.yaml', 'r') as f:
     input_data = yaml.safe_load(f)
 
 vacuum_vessel = input_data.get("vacuum_vessel",{})
@@ -147,3 +147,9 @@ lf_coil_centers = lf_coil.get("positions",[])
 lf_coil_inner_dimensions = lf_coil.get("inner_dimensions", [])
 
 print(lf_coil_inner_dimensions["radial_thickness"])
+
+
+hf_coil = input_data.get("hf_coil", [])
+
+casing_thickness  = [layer["thickness"] for layer in hf_coil.get("casing_layers", [])]
+print(f"Casing layer thicknesses {casing_thickness}")

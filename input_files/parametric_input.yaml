@@ -109,4 +109,5 @@ end_cell:
   axial_length: 500
   shell_thickness: 3
   diameter: 350
-  material: stainless
+  shell_material: stainless
+  inner_material: vacuum

@@ -2,7 +2,6 @@ import openmc
 import numpy as np
 import matplotlib.pyplot as plt
 import material as m
-import parametric_input as param
 from geometry_lib import *
 from source_lib import *
 import yaml
@@ -88,14 +87,6 @@ central_cell = input_data.get("central_cell", {})
 central_cell_axial_length = central_cell.get("axial_length")
 
 central_cell_length_from_midplane = central_cell_axial_length / 2
-
-# Extract thickness values for different layers from parameters
-# breeder_thickness = param.breeding_blanket_thickness
-# back_wall_thickness = param.back_wall_thickness
-# he_manifold_thickness = param.helium_manifold_thickness
-# shield_front_plate_thickness = param.HT_shield_face_plate_thickness
-# shield_thickness = param.HT_shield_filler_thickness
-# shield_back_plate_thickness = param.HT_shield_back_plate_thickness
 
 # Load predefined central cell layers (thickness, material) from parameters
 
@@ -214,18 +205,16 @@ hf_coil = input_data.get("hf_coil", [])
 hf_coil_shield = hf_coil.get("shield",[])
 hf_coil_magnet = hf_coil.get("magnet", [])
 
+casing_layers_thickness  = np.array([layer["thickness"] for layer in hf_coil.get("casing_layers", [])])
+casing_layers_materials = np.array([getattr(m, layer["material"]) for layer in hf_coil.get("casing_layers",[])])
 
 hf_coil_center_z0 = (
     central_cell_length_from_midplane  
     + hf_coil_shield["shield_central_cell_gap"]           # Gap between HF shield and central cell
     + hf_coil_shield["axial_thickness"][0]    # Axial thickness of the shield (toward midplane)
-    + np.sum(param.hf_coil_casing_thicknesses)   # Total casing thickness
+    + np.sum(casing_layers_thickness)   # Total casing thickness
     + hf_coil_magnet["axial_thickness"] / 2          # Half of the magnet's axial thickness
 )
-
-# --- Define Casing Layer Thicknesses ---
-# The thickness values for different layers of the casing (e.g., vacuum, aluminum, steel)
-layers = param.hf_coil_casing_thicknesses
 
 # --- Compute Inner Radius for Magnet and Casing ---
 # The inner radius is determined by the bottleneck cylinder radius, the shield thickness,
@@ -233,7 +222,7 @@ layers = param.hf_coil_casing_thicknesses
 inner_radius_magnet_casings = (
     bottleneck_cylinders_radii[-1]               # Outermost bottleneck cylinder radius
     + hf_coil_shield["radial_thickness"][0]   # Shield thickness (toward central axis)
-    + hf_coil_shield["radial_gap_before_casing "]            # Extra spacing before the casing begins
+    + hf_coil_shield["radial_gap_before_casing"]            # Extra spacing before the casing begins
 )
 
 # --- Define Regions for Left and Right HF Coils ---
@@ -244,7 +233,7 @@ shield_regions_right = nested_cylindrical_shells(
     inner_radius_magnet_casings, 
     hf_coil_magnet["radial_thickness"], 
     hf_coil_magnet["axial_thickness"], 
-    layers, layers, layers
+    casing_layers_thickness, casing_layers_thickness, casing_layers_thickness
 )
 
 shield_regions_left = nested_cylindrical_shells(
@@ -252,7 +241,7 @@ shield_regions_left = nested_cylindrical_shells(
     inner_radius_magnet_casings, 
     hf_coil_magnet["radial_thickness"], 
     hf_coil_magnet["axial_thickness"], 
-    layers, layers, layers
+    casing_layers_thickness, casing_layers_thickness, casing_layers_thickness
 )
 
 # --- Define the HF Magnet Region ---
@@ -271,7 +260,7 @@ room_region &= ~ (hf_magnet_region_left | hf_magnet_region_right)  # Exclude mag
 # We iterate over these layers, assigning them the corresponding casing material.
 for i in range(1, len(shield_regions_left)):  
     combined_region = shield_regions_left[i] | shield_regions_right[i]
-    combined_region_cell = openmc.Cell(6500 + i, region=combined_region, fill=param.hf_coil_casing_materials[i - 1])
+    combined_region_cell = openmc.Cell(6500 + i, region=combined_region, fill=casing_layers_materials[i - 1])
 
     universe_machine.add_cells([combined_region_cell])
     room_region &= ~combined_region  # Exclude each casing layer from the room
@@ -282,19 +271,19 @@ for i in range(1, len(shield_regions_left)):
 # Total radial thickness of the HF outermost shell (coil + casing layers)
 inner_radial_thickness_hf_outermost_shell = (
     hf_coil_magnet["radial_thickness"] 
-    + 2 * np.sum(param.hf_coil_casing_thicknesses)  # Accounts for both sides of the casing
+    + 2 * np.sum(casing_layers_thickness)  # Accounts for both sides of the casing
 )
 
 # Total axial thickness of the HF outermost shell (coil + casing layers)
 inner_axial_thickness_hf_outermost_shell = (
     hf_coil_magnet["axial_thickness"] 
-    + 2 * np.sum(param.hf_coil_casing_thicknesses)  # Accounts for both sides of the casing
+    + 2 * np.sum(casing_layers_thickness)  # Accounts for both sides of the casing
 )
 
 # Compute the inner radius of the HF main shield (before applying the shell thickness)
 inner_radius_hf_main_shield = (
     bottleneck_cylinders_radii[-1]  # Outermost bottleneck radius
-    + param.radial_gap_before_casing  # Gap before casing begins
+    + hf_coil_shield["radial_gap_before_casing"]  # Gap before casing begins
 )
 
 # --- Define the HF Main Shield Region ---
@@ -325,13 +314,13 @@ hf_main_shield_left_region = hollow_cylinder_with_shell(
 hf_main_shield_right_cell = openmc.Cell(
     6201, 
     region=hf_main_shield_right_region, 
-    fill=param.hf_coil_main_shield_material  # Assign material to the shield
+    fill=getattr(m, hf_coil_shield["material"])   # Assign material to the shield
 )
 
 hf_main_shield_left_cell = openmc.Cell(
     6202, 
     region=hf_main_shield_left_region, 
-    fill=param.hf_coil_main_shield_material  # Assign material to the shield
+    fill=getattr(m, hf_coil_shield["material"])  # Assign material to the shield
 )
 
 # Add the HF main shield cell to the simulation
@@ -363,9 +352,9 @@ end_cell_radial_thickness = end_cell_diameter / 2  # Convert diameter to radius
 
 right_end_cell_z0 = (
     hf_coil_center_z0 
-    + param.hf_coil_shield_axial_thickness[0]  # Axial thickness of the shield (toward midplane)
-    + np.sum(param.hf_coil_casing_thicknesses)  # Total casing thickness
-    + param.hf_coil_axial_thickness / 2  # Half of the magnet's axial thickness
+    + hf_coil_shield["axial_thickness"][0]  # Axial thickness of the shield (toward midplane)
+    + np.sum(casing_layers_thickness)  # Total casing thickness
+    + hf_coil_magnet["axial_thickness"] / 2  # Half of the magnet's axial thickness
     + end_cell_shell_thickness  # Shell thickness of the end cell
     + end_cell_axial_length / 2  # Half of the end cell's axial length
 )
@@ -400,13 +389,13 @@ right_end_cell_shell &= ~vacuum_section_regions[-1]
 end_cell_left_shell_cell = openmc.Cell(
     5001, 
     region=left_end_cell_shell, 
-    fill=param.end_cell_shell_material  # Material for the shell
+    fill=getattr(m, end_cell["shell_material"])  # Material for the shell
 )
 
 end_cell_left_inner_cell = openmc.Cell(
     5002, 
     region=left_end_cell_inner, 
-    fill=m.vacuum  # Inner region is a vacuum
+    fill=getattr(m, end_cell["inner_material"])  # Material for inside the end cell
 )
 
 # Add left end cell components to the simulation
@@ -416,13 +405,13 @@ universe_machine.add_cells([end_cell_left_shell_cell, end_cell_left_inner_cell])
 end_cell_right_shell_cell = openmc.Cell(
     5003, 
     region=right_end_cell_shell, 
-    fill=param.end_cell_shell_material  # Material for the shell
+    fill=getattr(m, end_cell["shell_material"])  # Material for the shell
 )
 
 end_cell_right_inner_cell = openmc.Cell(
     5004, 
     region=right_end_cell_inner, 
-    fill=m.vacuum  # Inner region is a vacuum
+    fill=getattr(m, end_cell["inner_material"])  # Material for inside the end cell
 )
 
 # Add right end cell components to the simulation
