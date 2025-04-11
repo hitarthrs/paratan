@@ -281,13 +281,13 @@ for i in range(1, len(shield_regions_left)):
 
 # Total radial thickness of the HF outermost shell (coil + casing layers)
 inner_radial_thickness_hf_outermost_shell = (
-    param.hf_coil_radial_thickness 
+    hf_coil_magnet["radial_thickness"] 
     + 2 * np.sum(param.hf_coil_casing_thicknesses)  # Accounts for both sides of the casing
 )
 
 # Total axial thickness of the HF outermost shell (coil + casing layers)
 inner_axial_thickness_hf_outermost_shell = (
-    param.hf_coil_axial_thickness 
+    hf_coil_magnet["axial_thickness"] 
     + 2 * np.sum(param.hf_coil_casing_thicknesses)  # Accounts for both sides of the casing
 )
 
@@ -306,18 +306,18 @@ hf_main_shield_right_region = hollow_cylinder_with_shell(
         inner_radius_hf_main_shield,            # Inner radius
         inner_radial_thickness_hf_outermost_shell,  # Radial thickness of the outermost shell
         inner_axial_thickness_hf_outermost_shell,  # Axial thickness of the outermost shell
-        param.hf_coil_shield_radial_thickness[0],  # Inner shell thickness (towards axis)
-        param.hf_coil_shield_radial_thickness[1],  # Outer shell thickness (away from axis)
-        param.hf_coil_shield_axial_thickness[0]    # Axial thickness of the shield (towards midplane)
+        hf_coil_shield["radial_thickness"][0],  # Inner shell thickness (towards axis)
+        hf_coil_shield["radial_thickness"][1],  # Outer shell thickness (away from axis)
+        hf_coil_shield["axial_thickness"][0]    # Axial thickness of the shield (towards midplane)
     )[0] 
 hf_main_shield_left_region = hollow_cylinder_with_shell(
         -hf_coil_center_z0,                     # Z-position (left side)
         inner_radius_hf_main_shield,            # Inner radius
         inner_radial_thickness_hf_outermost_shell,  # Radial thickness of the outermost shell
         inner_axial_thickness_hf_outermost_shell,  # Axial thickness of the outermost shell
-        param.hf_coil_shield_radial_thickness[0],  # Inner shell thickness (towards axis)
-        param.hf_coil_shield_radial_thickness[1],  # Outer shell thickness (away from axis)
-        param.hf_coil_shield_axial_thickness[0]    # Axial thickness of the shield (towards midplane)
+        hf_coil_shield["radial_thickness"][0],  # Inner shell thickness (towards axis)
+        hf_coil_shield["radial_thickness"][1],  # Outer shell thickness (away from axis)
+        hf_coil_shield["axial_thickness"][0]    # Axial thickness of the shield (towards midplane)
     )[0]
 
 
