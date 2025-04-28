@@ -438,7 +438,7 @@ geometry.root_universe.plot(
 )
 
 # Save the generated plot to the results directory
-plt.savefig('mirror_cross_section.png', bbox_inches="tight")
+plt.savefig('simple_mirror_cross_section.png', bbox_inches="tight")
 
 # ________________________________________ EXPORT GEOMETRY TO XML ________________________________________ #
 

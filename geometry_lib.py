@@ -545,23 +545,79 @@ def redefined_vacuum_vessel_region(outer_axial_length, central_axial_length, cen
     
     return vessel_region
 
-def make_tandem_vacuum_vessel_regions(end_plug_vv_parameters, central_cell_vv_parameters, central_cell_end_plug_separation_distance, bottleneck_radius, end_axial_distance):
+class TandemVacuumVessel:
+    """
+    Class to construct OpenMC regions for a tandem mirror vacuum vessel:
+    - Central cell vacuum vessel
+    - Two end plug vacuum vessels (left and right)
+    """
 
-    end_plug_vv_central_radius = end_plug_vv_parameters.radius
-    end_plug_vv_central_axis_length = end_plug_vv_parameters.central_axis_length
-    end_plug_vv_outer_length = end_plug_vv_parameters.outer_length
-    
-    central_cell_central_radius = central_cell_vv_parameters.radius
-    central_cell_vv_central_axis_length = central_cell_vv_parameters.central_axis_length
-    central_cell_vv_outer_length = central_cell_vv_parameters.outer_length
+    def __init__(self, end_plug_vv_parameters, central_cell_vv_parameters, central_cell_end_plug_separation_distance, bottleneck_radius, end_axial_distance):
+        """
+        Initialize the TandemVacuumVessel object.
 
-    right_end_plug_axial_midplane = central_cell_vv_central_axis_length/2 + central_cell_end_plug_separation_distance + end_plug_vv_central_axis_length/2
-    left_end_plug_axial_midplane = -central_cell_vv_central_axis_length/2 - central_cell_end_plug_separation_distance - end_plug_vv_central_axis_length/2
+        Parameters
+        ----------
+        end_plug_vv_parameters : object
+            Object with attributes 'radius', 'central_axis_length', and 'outer_length' for the end plug vacuum vessel.
+        central_cell_vv_parameters : object
+            Object with attributes 'radius', 'central_axis_length', and 'outer_length' for the central cell vacuum vessel.
+        central_cell_end_plug_separation_distance : float
+            Axial distance (cm) separating the central cell vessel from each end plug vessel.
+        bottleneck_radius : float
+            Radius (cm) of the bottleneck connecting sections.
+        end_axial_distance : float
+            Extra axial extension (cm) for the end plug vessels beyond their nominal structure.
+        """
+        self.end_plug_vv_parameters = end_plug_vv_parameters
+        self.central_cell_vv_parameters = central_cell_vv_parameters
+        self.central_cell_end_plug_separation_distance = central_cell_end_plug_separation_distance
+        self.bottleneck_radius = bottleneck_radius
+        self.end_axial_distance = end_axial_distance
 
-    central_cell_vv_region = redefined_vacuum_vessel_region(central_cell_vv_outer_length, central_cell_vv_central_axis_length, central_cell_central_radius, bottleneck_radius, central_cell_end_plug_separation_distance/2, central_cell_end_plug_separation_distance/2, axial_midplane = 0.0)
+    def build_regions(self):
+        """
+        Build OpenMC regions for the tandem mirror vacuum vessel.
 
-    right_end_plug_vv_region = redefined_vacuum_vessel_region(end_plug_vv_outer_length, end_plug_vv_central_axis_length, end_plug_vv_central_radius, bottleneck_radius, central_cell_end_plug_separation_distance/2, end_axial_distance, axial_midplane = right_end_plug_axial_midplane)
-    left_end_plug_vv_region = redefined_vacuum_vessel_region(end_plug_vv_outer_length, end_plug_vv_central_axis_length, end_plug_vv_central_radius, bottleneck_radius, end_axial_distance, central_cell_end_plug_separation_distance/2, axial_midplane = left_end_plug_axial_midplane)
+        Returns
+        -------
+        tuple
+            A tuple containing:
+            - central_cell_vv_region : openmc.Region
+            - [left_end_plug_vv_region, right_end_plug_vv_region] : list of openmc.Region
+        """
+        # --- Extract end plug vacuum vessel parameters ---
+        end_plug_vv_central_radius = self.end_plug_vv_parameters.radius
+        end_plug_vv_central_axis_length = self.end_plug_vv_parameters.central_axis_length
+        end_plug_vv_outer_length = self.end_plug_vv_parameters.outer_length
 
+        # --- Extract central cell vacuum vessel parameters ---
+        central_cell_central_radius = self.central_cell_vv_parameters.radius
+        central_cell_vv_central_axis_length = self.central_cell_vv_parameters.central_axis_length
+        central_cell_vv_outer_length = self.central_cell_vv_parameters.outer_length
 
-    return central_cell_vv_region, [left_end_plug_vv_region, right_end_plug_vv_region]
+        # --- Compute axial midplane locations for left and right end plug vessels ---
+        right_end_plug_axial_midplane = (
+            central_cell_vv_central_axis_length / 2
+            + self.central_cell_end_plug_separation_distance
+            + end_plug_vv_central_axis_length / 2
+        )
+        left_end_plug_axial_midplane = (
+            -central_cell_vv_central_axis_length / 2
+            - self.central_cell_end_plug_separation_distance
+            - end_plug_vv_central_axis_length / 2
+        )
+
+        # --- Build regions using the vacuum vessel region generator ---
+
+        # Central cell vacuum vessel
+        central_cell_vv_region = redefined_vacuum_vessel_region(central_cell_vv_outer_length, central_cell_vv_central_axis_length, central_cell_central_radius, self.bottleneck_radius, self.central_cell_end_plug_separation_distance / 2, self.central_cell_end_plug_separation_distance / 2, axial_midplane=0.0)
+
+        # Right end plug vacuum vessel
+        right_end_plug_vv_region = redefined_vacuum_vessel_region(end_plug_vv_outer_length, end_plug_vv_central_axis_length, end_plug_vv_central_radius, self.bottleneck_radius, self.central_cell_end_plug_separation_distance / 2, self.end_axial_distance, axial_midplane=right_end_plug_axial_midplane)
+
+        # Left end plug vacuum vessel
+        left_end_plug_vv_region = redefined_vacuum_vessel_region(end_plug_vv_outer_length, end_plug_vv_central_axis_length, end_plug_vv_central_radius, self.bottleneck_radius, self.end_axial_distance, self.central_cell_end_plug_separation_distance / 2, axial_midplane=left_end_plug_axial_midplane)
+
+        # --- Return regions ---
+        return central_cell_vv_region, [left_end_plug_vv_region, right_end_plug_vv_region]

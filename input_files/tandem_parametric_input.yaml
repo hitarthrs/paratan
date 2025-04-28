@@ -1,0 +1,26 @@
+# ________________________________________ VACUUM VESSEL INFORMATION ________________________________________ #
+
+vacuum_vessel:
+  central_cell:
+    central_radius:
+    central_axis_length:
+    outer_axial_length: 
+  end_plug:
+    central_radius:
+    central_axis_length:
+    outer_axial_length:
+  bottleneck radius:
+  central_cell_end_plug_separation_distance:
+  end_axial_distance:
+
+# ________________________________________ FIRST WALL INFORMATION ________________________________________ #
+
+first_wall:
+  central_cell:
+    layers:
+    - thickness:
+    - material:
+  structure:
+    layers:
+    - thickness:
+    - material:
