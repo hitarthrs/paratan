@@ -24,3 +24,36 @@ first_wall:
     layers:
     - thickness:
     - material:
+
+# _________________________________________ CENTRAL CELL INFORMATION _____________________________________ #
+
+central_cell:
+
+# _________________________________________ BLANKET INFORMATION __________________________________________ #
+  
+  blanket:
+    axial_length: 400
+    layers:
+      - thickness: 77
+        material: vacuum  # Breeding Blanket
+      - thickness: 2
+        material: BW_FNSF  # Back Wall
+      - thickness: 30
+        material: HT_Shield_filler  # HT Shield Filler
+      - thickness: 2.5
+        material: water_cooled_wc  # HT Shield Back Plate
+
+# ________________________________________ CENTRAL CELL LF COIL PARAMETERS ________________________________________ #
+
+  lf_coil:
+    shell_thicknesses:
+      front: 10
+      back: 5
+      axial: 10
+    inner_dimensions:
+      axial_length: 20
+      radial_thickness: 10
+    positions: [-75, 75]  # Coil center positions along the Z-axis
+    materials:
+      shield: stainless
+      magnet: Magnet_Winding_Pack_2
