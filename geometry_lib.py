@@ -457,3 +457,111 @@ def hollow_mesh_from_domain(region, dimensions= [10, 10, 10], phi_grid_bounds=(0
     cyl_mesh = openmc.CylindricalMesh(r_grid=r_grid, phi_grid=phi_grid, z_grid=z_grid, origin=origin)
     
     return cyl_mesh
+
+def redefined_vacuum_vessel_region(outer_axial_length, central_axial_length, central_radius, bottleneck_radius, left_bottleneck_length, right_bottleneck_length, axial_midplane = 0.0):
+
+    """
+    Generates an OpenMC region representing a typical vacuum vessel shape for tandem mirror devices.
+
+    The geometry is symmetric about an axial midplane and consists of:
+      1. A central cylindrical section.
+      2. A conical taper connecting to an outer bottleneck cylindrical section.
+      3. Thin outer cylindrical sections extending outward.
+
+    Parameters
+    ----------
+    outer_axial_length : float
+        Total axial length (cm) of the outer cylindrical segments beyond the cone sections.
+    central_axial_length : float
+        Total axial length (cm) of the central cylindrical section.
+    central_radius : float
+        Radius (cm) of the central cylindrical section.
+    bottleneck_radius : float
+        Radius (cm) of the outer (bottleneck) cylindrical sections.
+    left_bottleneck_length : float
+        Axial length (cm) of the bottleneck section on the left side of the midplane.
+    right_bottleneck_length : float
+        Axial length (cm) of the bottleneck section on the right side of the midplane.
+    axial_midplane : float, optional
+        Z-coordinate (cm) of the midplane. Default is 0.0.
+
+    Returns
+    -------
+    openmc.Region
+        An OpenMC region object representing the full vacuum vessel shape.
+
+    Raises
+    ------
+    ValueError
+        If any input length or radius is non-positive.
+        If central_radius is less than bottleneck_radius.
+    """
+
+    # --- Input validation ---
+    if outer_axial_length <= 0 or central_axial_length <= 0:
+        raise ValueError("Axial lengths must be positive.")
+    if central_radius <= 0 or bottleneck_radius <= 0:
+        raise ValueError("Radii must be positive.")
+    if left_bottleneck_length <= 0 or right_bottleneck_length <= 0:
+        raise ValueError("Bottleneck lengths must be positive.")
+    if central_radius < bottleneck_radius:
+        raise ValueError("Central radius must be greater than bottleneck radius.")
+
+    # --- Set important z-positions ---
+    first_plane_distance = outer_axial_length / 2.0
+    second_plane_distance = central_axial_length / 2.0
+    
+    angle = np.arctan((central_axial_length - outer_axial_length)/(central_radius - bottleneck_radius))
+
+    first_plane_distance = outer_axial_length/2
+    second_plane_distance = central_axial_length/2
+
+    right_outermost_plane_distance = second_plane_distance + right_bottleneck_length
+    left_outermost_plane_distance = -second_plane_distance - left_bottleneck_length
+
+    central_cylinder_left_plane = openmc.ZPlane(z0 = axial_midplane -first_plane_distance)
+    central_cylinder_right_plane = openmc.ZPlane(z0 = axial_midplane + first_plane_distance)
+    central_cell_cylinder = openmc.ZCylinder(r = central_radius)
+    central_cylinder = -central_cell_cylinder & +central_cylinder_left_plane & -central_cylinder_right_plane
+    
+    left_outer_cylinder_1 = openmc.ZPlane(z0 = axial_midplane + left_outermost_plane_distance)
+    right_outer_cylinder_1 = openmc.ZPlane(z0 = axial_midplane - second_plane_distance)
+    
+    left_outer_cylinder_2 = openmc.ZPlane(z0 = axial_midplane + second_plane_distance)
+    right_outer_cylinder_2 = openmc.ZPlane(z0 = axial_midplane + right_outermost_plane_distance)
+    
+    outer_cylinder = openmc.ZCylinder(r = bottleneck_radius)
+    
+    outer_cylinders_region = -outer_cylinder & ((+left_outer_cylinder_1 & -right_outer_cylinder_1)| (+left_outer_cylinder_2 & -right_outer_cylinder_2))
+    
+    left_cone = openmc.model.ZConeOneSided(x0=0.0, y0=0.0, z0= axial_midplane - (central_radius/np.tan(angle)+first_plane_distance), r2=(np.tan(angle))**2)
+    right_cone = openmc.model.ZConeOneSided(x0=0.0, y0=0.0, z0=axial_midplane + (central_radius/np.tan(angle)+first_plane_distance), r2=(np.tan(angle))**2, up=False)
+    
+    left_cone_region = -left_cone & -central_cylinder_left_plane
+    right_cone_region = -right_cone & +central_cylinder_right_plane
+    
+    # --- Full vessel region ---
+    vessel_region = left_cone_region | right_cone_region | outer_cylinders_region | central_cylinder
+    
+    return vessel_region
+
+def make_tandem_vacuum_vessel_regions(end_plug_vv_parameters, central_cell_vv_parameters, central_cell_end_plug_separation_distance, bottleneck_radius, end_axial_distance):
+
+    end_plug_vv_central_radius = end_plug_vv_parameters.radius
+    end_plug_vv_central_axis_length = end_plug_vv_parameters.central_axis_length
+    end_plug_vv_outer_length = end_plug_vv_parameters.outer_length
+    
+    central_cell_central_radius = central_cell_vv_parameters.radius
+    central_cell_vv_central_axis_length = central_cell_vv_parameters.central_axis_length
+    central_cell_vv_outer_length = central_cell_vv_parameters.outer_length
+
+    right_end_plug_axial_midplane = central_cell_vv_central_axis_length/2 + central_cell_end_plug_separation_distance + end_plug_vv_central_axis_length/2
+    left_end_plug_axial_midplane = -central_cell_vv_central_axis_length/2 - central_cell_end_plug_separation_distance - end_plug_vv_central_axis_length/2
+
+    central_cell_vv_region = redefined_vacuum_vessel_region(central_cell_vv_outer_length, central_cell_vv_central_axis_length, central_cell_central_radius, bottleneck_radius, central_cell_end_plug_separation_distance/2, central_cell_end_plug_separation_distance/2, axial_midplane = 0.0)
+
+    right_end_plug_vv_region = redefined_vacuum_vessel_region(end_plug_vv_outer_length, end_plug_vv_central_axis_length, end_plug_vv_central_radius, bottleneck_radius, central_cell_end_plug_separation_distance/2, end_axial_distance, axial_midplane = right_end_plug_axial_midplane)
+    left_end_plug_vv_region = redefined_vacuum_vessel_region(end_plug_vv_outer_length, end_plug_vv_central_axis_length, end_plug_vv_central_radius, bottleneck_radius, end_axial_distance, central_cell_end_plug_separation_distance/2, axial_midplane = left_end_plug_axial_midplane)
+
+
+    return central_cell_vv_region, [left_end_plug_vv_region, right_end_plug_vv_region]

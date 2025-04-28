@@ -18,6 +18,8 @@ vacuum_vessel:
       thickness: 5.5
       material: FW_FNSF
 
+
+
 # ________________________________________ CENTRAL CELL INFORMATION ________________________________________ #
 
 central_cell:
