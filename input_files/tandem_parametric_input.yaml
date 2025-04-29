@@ -9,9 +9,9 @@ vacuum_vessel:
     central_radius:
     central_axis_length:
     outer_axial_length:
-  bottleneck radius:
+  bottleneck radius: 30
   central_cell_end_plug_separation_distance:
-  end_axial_distance:
+  end_axial_distance: 300
 
 # ________________________________________ FIRST WALL INFORMATION ________________________________________ #
 
@@ -57,3 +57,92 @@ central_cell:
     materials:
       shield: stainless
       magnet: Magnet_Winding_Pack_2
+
+
+# _________________________________________ END PLUG INFORMATION _____________________________________ #
+
+end_plug:
+
+  # ________________________________________ CENTRAL CYLINDER INFORMATION ________________________________________ #
+
+  central_cylinder:
+    axial_length: 400
+    layers:
+      - thickness: 70
+        material: vacuum  # Breeding Blanket
+      - thickness: 5
+        material: BW_FNSF  # Back Wall
+      - thickness: 20
+        material: HT_Shield_filler  # HT Shield Filler
+      - thickness: 5
+        material: water_cooled_wc  # HT Shield Back Plate
+
+  # ________________________________________ LF COIL PARAMETERS ________________________________________ #
+
+  lf_coil:
+    shell_thicknesses:
+      front: 10
+      back: 5
+      axial: 10
+    inner_dimensions:
+      axial_length: 20
+      radial_thickness: 10
+    positions: [-75, 75]  # Coil center positions along the Z-axis from the midplane of the end plug vacuum vessel
+    materials:
+      shield: stainless
+      magnet: Magnet_Winding_Pack_2
+
+  # ________________________________________ LF COIL TALLY FLAGS ________________________________________ #
+
+  lf_coil_tallies:
+    cell_tallies:
+      - scores: ['flux', 'heating']
+        filters: ['neutron_filter']
+        nuclides: ['Li6', 'Li7']
+      - scores: ['absorption']
+        filters: ['fast_energies_filter']
+
+    mesh_tallies:
+      - scores: ['flux', 'heating']
+        filters: ['neutron_filter']
+        nuclides: ['Li6', 'Li7']
+        dimensions: [10,10,10]
+      - scores: ['absorption']
+        filters: ['fast_energies_filter']
+        dimensions: [3,6,12]
+  # ________________________________________ HF COIL PARAMETERS ________________________________________ #
+
+  hf_coil:
+    magnet:
+      bore_radius: 60
+      radial_thickness: 150
+      axial_thickness: 150
+      material: Magnet_Winding_Pack_2
+    casing_layers:
+      - thickness: 1
+        material: vacuum
+      - thickness: 1
+        material: ss316ln
+    shield:
+      radial_gap_before_casing: 1
+      shield_central_cell_gap: 5
+      radial_thickness: [30, 30]  # First value: towards central axis, second: away
+      axial_thickness: [20, 10]  # First value: towards midplane, second: away
+      material: cooled_tungsten_boride
+
+  hf_coil_tallies:
+    cell_tallies:
+      - scores: ['flux', 'heating']
+        filters: ['neutron_filter']
+        nuclides: ['Li6', 'Li7']
+      - scores: ['absorption']
+        filters: ['fast_energies_filter']
+
+    mesh_tallies:
+      - scores: ['flux', 'heating']
+        filters: ['neutron_filter']
+        nuclides: ['Li6', 'Li7']
+        dimensions: [10,10,10]
+      - scores: ['absorption']
+        filters: ['fast_energies_filter']
+        dimensions: [3,26,12]
