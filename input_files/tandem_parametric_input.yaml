@@ -2,13 +2,13 @@
 
 vacuum_vessel:
   central_cell:
-    central_radius:
-    central_axis_length:
-    outer_axial_length: 
+    central_radius: 90
+    central_axis_length: 600
+    outer_axial_length: 500
   end_plug:
-    central_radius:
-    central_axis_length:
-    outer_axial_length:
+    central_radius: 60
+    central_axis_length: 350
+    outer_axial_length: 200
   bottleneck radius: 30
   central_cell_end_plug_separation_distance:
   end_axial_distance: 300
@@ -18,12 +18,16 @@ vacuum_vessel:
 first_wall:
   central_cell:
     layers:
-    - thickness:
-    - material:
-  structure:
+    - thickness: 0.62
+      material: tungsten
+    - thickness: 5
+      material: FW_FNSF
+  end_plug:
     layers:
-    - thickness:
-    - material:
+    - thickness: 0.5
+      material: tungsten
+    - thickness: 3
+      material: FW_FNSF
 
 # _________________________________________ CENTRAL CELL INFORMATION _____________________________________ #
 
@@ -32,7 +36,7 @@ central_cell:
 # _________________________________________ BLANKET INFORMATION __________________________________________ #
   
   blanket:
-    axial_length: 400
+    axial_length: 620
     layers:
       - thickness: 77
         material: vacuum  # Breeding Blanket
@@ -53,7 +57,7 @@ central_cell:
     inner_dimensions:
       axial_length: 20
       radial_thickness: 10
-    positions: [-75, 75]  # Coil center positions along the Z-axis
+    positions: [-75, -40, 40, 75]  # Coil center positions along the Z-axis
     materials:
       shield: stainless
       magnet: Magnet_Winding_Pack_2
@@ -66,7 +70,7 @@ end_plug:
   # ________________________________________ CENTRAL CYLINDER INFORMATION ________________________________________ #
 
   central_cylinder:
-    axial_length: 400
+    axial_length: 360
     layers:
       - thickness: 70
         material: vacuum  # Breeding Blanket
