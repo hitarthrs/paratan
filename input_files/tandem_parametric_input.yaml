@@ -10,7 +10,7 @@ vacuum_vessel:
     central_axis_length: 350
     outer_axial_length: 200
   bottleneck radius: 30
-  central_cell_end_plug_separation_distance:
+  central_cell_end_plug_separation_distance: 300
   end_axial_distance: 300
 
 # ________________________________________ FIRST WALL INFORMATION ________________________________________ #
