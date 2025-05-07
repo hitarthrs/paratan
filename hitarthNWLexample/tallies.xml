@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<tallies>
+  <filter id="1" type="cell">
+    <bins>6 7 8 9 10</bins>
+  </filter>
+  <tally id="14">
+    <filters>1</filters>
+    <scores>flux</scores>
+  </tally>
+</tallies>

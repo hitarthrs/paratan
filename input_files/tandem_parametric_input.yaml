@@ -57,7 +57,7 @@ central_cell:
     inner_dimensions:
       axial_length: 20
       radial_thickness: 10
-    positions: [-75, -40, 40, 75]  # Coil center positions along the Z-axis
+    positions: [-155, -70, 0, 70, 155]  # Coil center positions along the Z-axis
     materials:
       shield: stainless
       magnet: Magnet_Winding_Pack_2
@@ -117,22 +117,40 @@ end_plug:
   # ________________________________________ HF COIL PARAMETERS ________________________________________ #
 
   hf_coil:
-    magnet:
-      bore_radius: 60
-      radial_thickness: 150
-      axial_thickness: 150
-      material: Magnet_Winding_Pack_2
-    casing_layers:
-      - thickness: 1
-        material: vacuum
-      - thickness: 1
-        material: ss316ln
-    shield:
-      radial_gap_before_casing: 1
-      shield_central_cell_gap: 5
-      radial_thickness: [30, 30]  # First value: towards central axis, second: away
-      axial_thickness: [20, 10]  # First value: towards midplane, second: away
-      material: cooled_tungsten_boride
+    left:
+      magnet:
+        bore_radius: 60
+        radial_thickness: 150
+        axial_thickness: 150
+        material: Magnet_Winding_Pack_2
+      casing_layers:
+        - thickness: 1
+          material: vacuum
+        - thickness: 1
+          material: ss316ln
+      shield:
+        radial_gap_before_casing: 1
+        shield_central_cell_gap: 5
+        radial_thickness: [30, 30]  # First value: towards central axis, second: away
+        axial_thickness: [20, 10]  # First value: towards midplane, second: away
+        material: cooled_tungsten_boride
+    right_plug:
+      magnet:
+        bore_radius: 60
+        radial_thickness: 150
+        axial_thickness: 150
+        material: Magnet_Winding_Pack_2
+      casing_layers:
+        - thickness: 1
+          material: vacuum
+        - thickness: 1
+          material: ss316ln
+      shield:
+        radial_gap_before_casing: 1
+        shield_central_cell_gap: 5
+        radial_thickness: [30, 30]  # First value: towards central axis, second: away
+        axial_thickness: [20, 10]  # First value: towards midplane, second: away
+        material: cooled_tungsten_boride
 
   hf_coil_tallies:
     cell_tallies:

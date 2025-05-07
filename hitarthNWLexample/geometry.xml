@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<geometry>
+  <cell id="1" material="void" region="-12 9 -8" universe="1"/>
+  <cell id="2" material="void" region="-14 15 -5 8" universe="1"/>
+  <cell id="3" material="void" region="-10 -4 5" universe="1"/>
+  <cell id="4" material="void" region="-18 -19 4 -7" universe="1"/>
+  <cell id="5" material="void" region="-12 7 -6" universe="1"/>
+  <cell id="6" material="void" region="12 -13 9 -8" universe="1"/>
+  <cell id="7" material="void" region="(14 | -15) (-16 17) -5 8" universe="1"/>
+  <cell id="8" material="void" region="10 -11 -4 5" universe="1"/>
+  <cell id="9" material="void" region="(18 | 19) (-20 -21) 4 -7" universe="1"/>
+  <cell id="10" material="void" region="12 -13 7 -6" universe="1"/>
+  <cell id="11" material="void" region="2 -9 -3" universe="1"/>
+  <cell id="12" material="void" region="13 -3 9 -8" universe="1"/>
+  <cell id="13" material="void" region="(16 | -17) -3 -5 8" universe="1"/>
+  <cell id="14" material="void" region="11 -3 -4 5" universe="1"/>
+  <cell id="15" material="void" region="(20 | 21) -3 4 -7" universe="1"/>
+  <cell id="16" material="void" region="13 -3 7 -6" universe="1"/>
+  <cell id="17" material="void" region="-1 6 -3" universe="1"/>
+  <surface boundary="vacuum" coeffs="1500" id="1" type="z-plane"/>
+  <surface boundary="vacuum" coeffs="-1500" id="2" type="z-plane"/>
+  <surface boundary="vacuum" coeffs="0.0 0.0 200.0" id="3" type="z-cylinder"/>
+  <surface coeffs="127.9675" id="4" type="z-plane"/>
+  <surface coeffs="-127.9675" id="5" type="z-plane"/>
+  <surface coeffs="597.5" id="6" type="z-plane"/>
+  <surface coeffs="325" id="7" type="z-plane"/>
+  <surface coeffs="-325" id="8" type="z-plane"/>
+  <surface coeffs="-597.5" id="9" type="z-plane"/>
+  <surface coeffs="0.0 0.0 75.0" id="10" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 75.2" id="11" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 22.3" id="12" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 22.5" id="13" type="z-cylinder"/>
+  <surface coeffs="0 0 -407.8713105676658 0.07179676972449082" id="14" type="z-cone"/>
+  <surface coeffs="-407.8713105676658" id="15" type="z-plane"/>
+  <surface coeffs="0 0 -408.6177207291796 0.07179676972449082" id="16" type="z-cone"/>
+  <surface coeffs="-408.6177207291796" id="17" type="z-plane"/>
+  <surface coeffs="0 0 407.8713105676658 0.07179676972449082" id="18" type="z-cone"/>
+  <surface coeffs="407.8713105676658" id="19" type="z-plane"/>
+  <surface coeffs="0 0 408.6177207291796 0.07179676972449082" id="20" type="z-cone"/>
+  <surface coeffs="408.6177207291796" id="21" type="z-plane"/>
+</geometry>

@@ -79,7 +79,13 @@ def parse_machine_input(input_data, material_ns):
         }
     }
 
-    return vv_params, fw_params, cyl_params
+    # --------- 4. LF Coil Params ---------
+    lf_coil_params = {
+        "central": input_data.get("central_cell", {}).get("lf_coil", {}),
+        "end": input_data.get("end_plug", {}).get("lf_coil", {})
+    }
+
+    return vv_params, fw_params, cyl_params, lf_coil_params
 
 
 
@@ -98,6 +104,7 @@ class TandemVacuumVessel:
         self.end_axial_distance = end_axial_distance
         self.vacuum_material = vacuum_material
         self._regions = {}
+        self._components = {}
         self._cells = {}
         self._z_extents = {}
 
@@ -127,7 +134,7 @@ class TandemVacuumVessel:
             left_midplane + end_plug_vv_outer_length/2
         )
 
-        self._regions["central"] = redefined_vacuum_vessel_region(
+        self._regions["central"], self._components["central"]  = redefined_vacuum_vessel_region(
             central_cell_vv_outer_length,
             central_cell_vv_central_axis_length,
             central_cell_central_radius,
@@ -137,7 +144,7 @@ class TandemVacuumVessel:
             axial_midplane=0.0,
         )
 
-        self._regions["right"] = redefined_vacuum_vessel_region(
+        self._regions["right"], self._components["right"]  = redefined_vacuum_vessel_region(
             end_plug_vv_outer_length,
             end_plug_vv_central_axis_length,
             end_plug_vv_central_radius,
@@ -147,7 +154,7 @@ class TandemVacuumVessel:
             axial_midplane=right_midplane,
         )
 
-        self._regions["left"] = redefined_vacuum_vessel_region(
+        self._regions["left"],  self._components["left"] = redefined_vacuum_vessel_region(
             end_plug_vv_outer_length,
             end_plug_vv_central_axis_length,
             end_plug_vv_central_radius,
@@ -212,7 +219,7 @@ class TandemFWStructure:
             cells = []
 
             for i in range(1, len(vac_radii)):
-                new_region = redefined_vacuum_vessel_region(
+                new_region, parts = redefined_vacuum_vessel_region(
                     outer_len,
                     central_len,
                     vac_radii[i],
@@ -254,6 +261,7 @@ class TandemCentralCylinders:
         self._cells_by_region = {"left": [], "central": [], "right": []}
         self._regions_by_region = {"left": [], "central": [], "right": []}
         self._z_extents = {}
+        self._radii_by_region = {"left": [], "central": [], "right": []}
 
     def build_all_sections(self, base_radii, midplanes, axial_lengths, base_regions, mat_ns, add_cell_callback):
         for key, layers in zip(["left", "central", "right"], [self.left_layers, self.central_layers, self.right_layers]):
@@ -267,7 +275,7 @@ class TandemCentralCylinders:
             materials = [getattr(mat_ns, layer["material"]) for layer in layers]
             radii = base_radii[key] + np.cumsum(thicknesses)
 
-            print(radii)
+            self._radii_by_region[key] = radii
 
             zplanes = -openmc.ZPlane(z0=zmax) & +openmc.ZPlane(z0=zmin)
             prev_cyl = openmc.ZCylinder(r=radii[0])
@@ -297,27 +305,121 @@ class TandemCentralCylinders:
 
     def get_z_extents(self):
         return self._z_extents
+    
+    def get_radii_by_region(self):
+        return self._radii_by_region
+    
+class LFCoilBuilder:
+    """
+    Builds LF Coils over the central cylinder of the central cell, the left end plug, and the right end plug.
+    Uses outermost radii of central cylinder regions in each section and the midplane of each section.
+    """
 
+    def __init__(self, lf_coil_params):
+        """
+        Parameters
+        ----------
+        lf_coil_params : dict
+            Dictionary with 'central' and 'end' keys from parse_machine_input.
+        """
+
+        self.coil_data = {
+            "central": lf_coil_params.get("central", {}),
+            "end": lf_coil_params.get("end", {})
+        }
+
+        self._cells_by_region = {region: {"coil": [], "shield": []} for region in ["left", "central", "right"]}
+        self._regions_by_region = {region: {"coil": [], "shield": []} for region in ["left", "central", "right"]}
+
+    def build_all_sections(self, outer_radii_by_region, midplanes, mat_ns, add_cell_callback):
+        """
+        Builds coils for all three sections: left, central, and right.
+
+        Parameters
+        ----------
+        outer_radii_by_region : dict
+            Keys: 'left', 'central', 'right' → outermost radius from each central cylinder stack.
+        midplanes : dict
+            Keys: 'left', 'central', 'right' → axial center of each region.
+        mat_ns : module
+            Material namespace module.
+        """
+        i = 0
+        for key in ["left", "central", "right"]:
+            data_key = "central" if key == "central" else "end"
+            coil_data = self.coil_data.get(data_key, {})
+
+            positions = coil_data.get("positions", [])
+            inner_dims = coil_data.get("inner_dimensions", {})
+            shell_dims = coil_data.get("shell_thicknesses", {})
+            materials = coil_data.get("materials", {})
+
+            coil_regions = []
+            shield_regions = []
+            coil_cells = []
+            shield_cells = []
+
+            for z_offset in positions:
+                z_center = midplanes[key] + z_offset
+
+                shell_region, coil_region = hollow_cylinder_with_shell(
+                    z_center,
+                    outer_radii_by_region[key],
+                    inner_dims["radial_thickness"],
+                    inner_dims["axial_length"],
+                    shell_dims.get("front", 0),
+                    shell_dims.get("back", 0),
+                    shell_dims.get("axial", 0))
+                
+                shield_cell = openmc.Cell(
+                    cell_id=4000 + i,
+                    region=shell_region,
+                    fill=getattr(mat_ns, materials["shield"])
+                )
+                coil_cell = openmc.Cell(
+                    cell_id=4100 + i,
+                    region=coil_region,
+                    fill=getattr(mat_ns, materials["magnet"])
+                )
+
+                add_cell_callback(shield_cell)
+                add_cell_callback(coil_cell)
+
+                self._regions_by_region[key]["shield"].append(shell_region)
+                self._regions_by_region[key]["coil"].append(coil_region)
+                self._cells_by_region[key]["shield"].append(shield_cell)
+                self._cells_by_region[key]["coil"].append(coil_cell)
+                i += 1
+
+    def get_cells_by_region(self):
+        return self._cells_by_region
+
+    def get_regions_by_region(self):
+        return self._regions_by_region
+
+            
 
 class TandemMachineBuilder:
     """
     Assembles vacuum vessel, first wall, and central cylinder structures into a complete tandem mirror model.
     """
 
-    def __init__(self, vv_params, fw_params, central_cyl_params, material_ns):
+    def __init__(self, vv_params, fw_params, central_cyl_params, lf_coil_params, material_ns):
         self.vv_params = vv_params
         self.fw_params = fw_params
         self.central_cyl_params = central_cyl_params
+        self.lf_coil_params = lf_coil_params
         self.material_ns = material_ns
 
         self.vv_builder = None
         self.fw_builder = None
         self.ccyl_builder = None
+        self.lf_coil_builder = None
 
         self._universe = openmc.Universe(name="TandemMachine")
         self._all_cells = []
         self._z_extents = {}
-        self._regions = {"vv": {}, "fw": {}, "cyl": {}}
+        self._regions = {"vv": {}, "fw": {}, "cyl": {}, "lf_coils": {}, "hf_coils": {}}
 
     def _add_cell(self, cell):
         self._universe.add_cell(cell)
@@ -386,6 +488,21 @@ class TandemMachineBuilder:
         self._regions["cyl"] = self.ccyl_builder.get_regions_by_region()
         self._z_extents["cyl"] = self.ccyl_builder.get_z_extents()
 
+    # ----- LF Coils ------
+        
+        self.lf_coil_builder = LFCoilBuilder(self.lf_coil_params)
+
+        outer_radii = {key: self.ccyl_builder.get_radii_by_region()[key][-1] for key in ["left", "central", "right"]}
+
+        self.lf_coil_builder.build_all_sections(
+            outer_radii_by_region=outer_radii,
+            midplanes=self.central_cyl_params["midplanes"],
+            mat_ns=self.material_ns,
+            add_cell_callback=self._add_cell
+        )
+
+        self._regions["lf_coils"] = self.lf_coil_builder.get_regions_by_region()
+
     # ---------- Accessors ----------
     def get_universe(self):
         return self._universe
@@ -398,3 +515,6 @@ class TandemMachineBuilder:
 
     def get_z_extents(self):
         return self._z_extents
+    
+    def get_nwl(self):
+        return 

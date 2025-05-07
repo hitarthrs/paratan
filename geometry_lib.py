@@ -532,7 +532,10 @@ def redefined_vacuum_vessel_region(outer_axial_length, central_axial_length, cen
     
     outer_cylinder = openmc.ZCylinder(r = bottleneck_radius)
     
-    outer_cylinders_region = -outer_cylinder & ((+left_outer_cylinder_1 & -right_outer_cylinder_1)| (+left_outer_cylinder_2 & -right_outer_cylinder_2))
+    left_outer_cylinders_region = -outer_cylinder & (+left_outer_cylinder_1 & -right_outer_cylinder_1)
+    right_outer_cylinders_region = -outer_cylinder & (+left_outer_cylinder_2 & -right_outer_cylinder_2)
+
+    outer_cylinders_region = left_outer_cylinders_region | right_outer_cylinders_region
     
     left_cone = openmc.model.ZConeOneSided(x0=0.0, y0=0.0, z0= axial_midplane - (central_radius/np.tan(angle)+first_plane_distance), r2=(np.tan(angle))**2)
     right_cone = openmc.model.ZConeOneSided(x0=0.0, y0=0.0, z0=axial_midplane + (central_radius/np.tan(angle)+first_plane_distance), r2=(np.tan(angle))**2, up=False)
@@ -542,5 +545,32 @@ def redefined_vacuum_vessel_region(outer_axial_length, central_axial_length, cen
     
     # --- Full vessel region ---
     vessel_region = left_cone_region | right_cone_region | outer_cylinders_region | central_cylinder
+
+    # --- Z Planes ---
+
+    planes = {
+        'central_left' : central_cylinder_left_plane,
+        'central_right' : central_cylinder_right_plane,
+        'left_end': left_outer_cylinder_1,
+        'left_cone_plane': right_outer_cylinder_1, 
+        'right_cone_plane': left_outer_cylinder_2,
+        'right_end': right_outer_cylinder_2,
+    }
+
+
+    # --- Package components ---
+    components = {
+        'z_planes'          : planes,
+        'central_cylinder'  : central_cylinder,
+        'outer_cylinders'   : {'left': left_outer_cylinders_region, 'right': right_outer_cylinders_region},
+        'left_cone_region'  : left_cone_region,
+        'right_cone_region' : right_cone_region,
+        'surfaces'          : {
+            'cyl_central': central_cylinder,
+            'cyl_bottle' : outer_cylinder,
+            'cone_left'  : left_cone,
+            'cone_right' : right_cone,
+        }
+    }
     
-    return vessel_region
+    return vessel_region, components
