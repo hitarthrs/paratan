@@ -43,9 +43,9 @@ def parse_machine_input(input_data, material_ns):
         "central_fw": cc_fw_layers,
         "right_fw": ep_fw_layers,  # reuse
         "param_dict": {
-            "central": (cc_vv["outer_axial_length"], cc_vv["central_axis_length"], sep/2, sep/2, 0.0),
-            "left": (ep_vv["outer_axial_length"], ep_vv["central_axis_length"], end_axial, sep/2, left_midplane),
-            "right": (ep_vv["outer_axial_length"], ep_vv["central_axis_length"], sep/2, end_axial, right_midplane),
+            "central": (cc_vv["outer_axial_length"], cc_vv["central_axis_length"], sep/10, sep/10, 0.0),
+            "left": (ep_vv["outer_axial_length"], ep_vv["central_axis_length"], end_axial, 9*sep/10, left_midplane),
+            "right": (ep_vv["outer_axial_length"], ep_vv["central_axis_length"], 9*sep/10, end_axial, right_midplane),
         },
         "base_radii": {
             "central": cc_vv["central_radius"],
@@ -85,7 +85,20 @@ def parse_machine_input(input_data, material_ns):
         "end": input_data.get("end_plug", {}).get("lf_coil", {})
     }
 
-    return vv_params, fw_params, cyl_params, lf_coil_params
+    # --------- 5. HF Coil Params ---------
+    hf_coil_data = input_data.get("end_plug", {}).get("hf_coil", {})
+
+    hf_coil_params = {
+        key: {
+            "magnet": hf_coil_data.get(key, {}).get("magnet", {}),
+            "casing_layers": {
+                "thicknesses": [layer["thickness"] for layer in hf_coil_data.get(key, {}).get("casing_layers", [])],
+                "materials": [layer["material"] for layer in hf_coil_data.get(key, {}).get("casing_layers", [])]
+            },
+            "shield": hf_coil_data.get(key, {}).get("shield", {})
+        } for key in ["left", "right"]}
+
+    return vv_params, fw_params, cyl_params, lf_coil_params, hf_coil_params
 
 
 
@@ -139,8 +152,8 @@ class TandemVacuumVessel:
             central_cell_vv_central_axis_length,
             central_cell_central_radius,
             self.bottleneck_radius,
-            self.central_cell_end_plug_separation_distance / 2,
-            self.central_cell_end_plug_separation_distance / 2,
+            self.central_cell_end_plug_separation_distance / 10,
+            self.central_cell_end_plug_separation_distance / 10,
             axial_midplane=0.0,
         )
 
@@ -149,7 +162,7 @@ class TandemVacuumVessel:
             end_plug_vv_central_axis_length,
             end_plug_vv_central_radius,
             self.bottleneck_radius,
-            self.central_cell_end_plug_separation_distance / 2,
+            9 * self.central_cell_end_plug_separation_distance / 10,
             self.end_axial_distance,
             axial_midplane=right_midplane,
         )
@@ -160,7 +173,7 @@ class TandemVacuumVessel:
             end_plug_vv_central_radius,
             self.bottleneck_radius,
             self.end_axial_distance,
-            self.central_cell_end_plug_separation_distance / 2,
+            9 * self.central_cell_end_plug_separation_distance / 10,
             axial_midplane=left_midplane,
         )
 
@@ -194,6 +207,7 @@ class TandemFWStructure:
         self._cells_by_region = {"left": [], "central": [], "right": []}
         self._regions_by_region = {"left": [], "central": [], "right": []}
         self._z_extents = {}
+        self._fw_radii = {"left": [], "central": [], "right": []}
 
     def _process_layers(self, layer_dict, base_radius, bottleneck_radius, mat_ns):
         thicknesses = [layer["thickness"] for layer in layer_dict]
@@ -205,6 +219,11 @@ class TandemFWStructure:
     def build_all_sections(self, region_dict, param_dict, mat_ns, base_radii, bottleneck_radii, add_cell_callback):
         for key, fw_layers in zip(["left", "central", "right"], [self.left_fw, self.central_fw, self.right_fw]):
             outer_len, central_len, left_len, right_len, midplane = param_dict[key]
+            
+            # Flags
+            # print(f"For {[key]} section the left legnth is {left_len}")
+            # print(f"For {[key]} section the right legnth is {right_len}")
+            
             base_region = region_dict[key]
             base_r = base_radii[key]
             bott_r = bottleneck_radii[key]
@@ -214,6 +233,8 @@ class TandemFWStructure:
             self._z_extents[key] = (z_min, z_max)
 
             vac_radii, bott_radii, materials = self._process_layers(fw_layers, base_r, bott_r, mat_ns)
+
+            self._fw_radii[key] = bott_radii
 
             regions = [base_region]
             cells = []
@@ -248,6 +269,10 @@ class TandemFWStructure:
     def get_z_extents(self):
         return self._z_extents
     
+    def fw_radii(self):
+        return self._fw_radii
+        
+
 class TandemCentralCylinders:
     """
     Builds concentric cylindrical axial layers for left plug, central cell, and right plug regions.
@@ -396,6 +421,129 @@ class LFCoilBuilder:
 
     def get_regions_by_region(self):
         return self._regions_by_region
+    
+
+class HFCoilBuilder:
+    """
+    Builds HF Coils around the left and right end plugs.
+    Verifies that the bore radius matches the combined bottleneck + shield + casing geometry.
+    """
+
+    def __init__(self, hf_coil_params):
+        """
+        Parameters
+        ----------
+        hf_coil_params : dict
+            Output from parse_machine_input()[4]
+        """
+        self.coil_data = hf_coil_params
+        self._cells_by_region = {region: {"coil": [], "shield": []} for region in ["left", "right"]}
+        self._regions_by_region = {region: {"coil": [], "shield": []} for region in ["left", "right"]}
+
+    def build_all_sections(self, bottleneck_radii, cc_half_lengths, midplanes, mat_ns, add_cell_callback):
+        i = 0
+        for key in ["left", "right"]:
+            hf_data = self.coil_data[key]
+            magnet = hf_data["magnet"]
+            casing = hf_data["casing_layers"]
+            shield = hf_data["shield"]
+
+            casing_thicknesses = np.array(casing["thicknesses"])
+            casing_materials = [getattr(mat_ns, mat) for mat in casing["materials"]]
+            bore_radius = magnet["bore_radius"]
+            bottleneck_r = bottleneck_radii[key]
+
+            # Check bore radius
+            computed_bore = bottleneck_r + shield["radial_thickness"][0] + shield["radial_gap_before_casing"] + np.sum(casing_thicknesses)
+            if not np.isclose(computed_bore, bore_radius, atol=1e-4):
+                raise ValueError(f"HF {key} bore radius mismatch: expected {bore_radius}, got {computed_bore:.4f}")
+
+            # Compute base radius before casing begins
+            r_inner = bottleneck_r + shield["radial_thickness"][0] + shield["radial_gap_before_casing"]
+
+            for direction in ["inward", "outward"]:
+                if direction == "inward":
+                    axial_sign = 1 if key == "left" else -1
+                    axial_thickness = shield["axial_thickness"][0]
+                else:
+                    axial_sign = -1 if key == "left" else 1
+                    axial_thickness = shield["axial_thickness"][0]
+                z0 = (
+                    midplanes[key]
+                    + axial_sign * (
+                        cc_half_lengths[key]
+                        + shield["shield_central_cell_gap"]
+                        + axial_thickness
+                        + np.sum(casing_thicknesses)
+                        + magnet["axial_thickness"] / 2
+                    )
+                )
+
+                print(f"The z0 for the {direction} magnet on the {key} side is {z0}.")
+
+                # Magnet and casing
+                casing_regions = nested_cylindrical_shells(
+                    z0=z0,
+                    innermost_radius=r_inner,
+                    inner_radial_thickness=magnet["radial_thickness"],
+                    inner_axial_thickness=magnet["axial_thickness"],
+                    layer_front_thickness=casing_thicknesses,
+                    layer_back_thickness=casing_thicknesses,
+                    layer_axial_thickness=casing_thicknesses
+                )
+
+                magnet_region = casing_regions[0]
+                magnet_cell = openmc.Cell(
+                    cell_id=6100 + i,
+                    region=magnet_region,
+                    fill=getattr(mat_ns, magnet["material"])
+                )
+                self._regions_by_region[key]["coil"].append(magnet_region)
+                self._cells_by_region[key]["coil"].append(magnet_cell)
+                add_cell_callback(magnet_cell)
+
+                for j, region in enumerate(casing_regions[1:]):
+                    casing_cell = openmc.Cell(
+                        cell_id=6500 + i * 10 + j,
+                        region=region,
+                        fill=casing_materials[j]
+                    )
+                    self._regions_by_region[key]["coil"].append(region)
+                    self._cells_by_region[key]["coil"].append(casing_cell)
+                    add_cell_callback(casing_cell)
+
+                # Shield
+                outer_r_thick = magnet["radial_thickness"] + 2 * np.sum(casing_thicknesses)
+                outer_z_thick = magnet["axial_thickness"] + 2 * np.sum(casing_thicknesses)
+                r_shield_base = bottleneck_r + shield["radial_gap_before_casing"]
+
+                shield_region = hollow_cylinder_with_shell(
+                    z0,
+                    r_shield_base,
+                    outer_r_thick,
+                    outer_z_thick,
+                    shield["radial_thickness"][0],
+                    shield["radial_thickness"][1],
+                    axial_thickness
+                )[0]
+
+                shield_cell = openmc.Cell(
+                    cell_id=6200 + i,
+                    region=shield_region,
+                    fill=getattr(mat_ns, shield["material"])
+                )
+                self._regions_by_region[key]["shield"].append(shield_region)
+                self._cells_by_region[key]["shield"].append(shield_cell)
+                add_cell_callback(shield_cell)
+
+                i += 1
+
+    def get_cells_by_region(self):
+        return self._cells_by_region
+
+    def get_regions_by_region(self):
+        return self._regions_by_region
+
 
             
 
@@ -404,17 +552,19 @@ class TandemMachineBuilder:
     Assembles vacuum vessel, first wall, and central cylinder structures into a complete tandem mirror model.
     """
 
-    def __init__(self, vv_params, fw_params, central_cyl_params, lf_coil_params, material_ns):
+    def __init__(self, vv_params, fw_params, central_cyl_params, lf_coil_params, hf_coil_params, material_ns):
         self.vv_params = vv_params
         self.fw_params = fw_params
         self.central_cyl_params = central_cyl_params
         self.lf_coil_params = lf_coil_params
+        self.hf_coil_params = hf_coil_params
         self.material_ns = material_ns
 
         self.vv_builder = None
         self.fw_builder = None
         self.ccyl_builder = None
         self.lf_coil_builder = None
+        self.hf_coil_builder = None
 
         self._universe = openmc.Universe(name="TandemMachine")
         self._all_cells = []
@@ -443,7 +593,7 @@ class TandemMachineBuilder:
             self.fw_params.get("right_fw", None)
         )
 
-        fw_cells = self.fw_builder.build_all_sections(
+        self.fw_builder.build_all_sections(
             region_dict=self._regions["vv"],
             param_dict=self.fw_params["param_dict"],
             mat_ns=self.material_ns,
@@ -454,6 +604,7 @@ class TandemMachineBuilder:
 
         self._regions["fw"] = self.fw_builder.get_regions_by_region()
         self._z_extents["fw"] = self.fw_builder.get_z_extents()
+
 
         # ----- 3. Central Cylinders -----
         base_regions = {
@@ -502,6 +653,33 @@ class TandemMachineBuilder:
         )
 
         self._regions["lf_coils"] = self.lf_coil_builder.get_regions_by_region()
+
+    # ----- 5. HF Coils -----
+        
+        self.hf_coil_builder = HFCoilBuilder(self.hf_coil_params)
+        
+        #print(self.fw_builder.fw_radii()["left"])
+        
+        bottleneck_radii = {
+            "left": self.fw_builder.fw_radii()["left"][-1],
+            "right": self.fw_builder.fw_radii()["right"][-1]
+        }
+        
+        cc_half_lengths = {
+            key: self.central_cyl_params["axial_lengths"][key] / 2
+            for key in ["left", "right"]
+        }
+        self.hf_coil_builder.build_all_sections(
+            bottleneck_radii=bottleneck_radii,
+            cc_half_lengths=cc_half_lengths,
+            midplanes={
+                "left": self.central_cyl_params["midplanes"]["left"],
+                "right": self.central_cyl_params["midplanes"]["right"]
+            },
+            mat_ns=self.material_ns,
+            add_cell_callback=self._add_cell
+        )
+        self._regions["hf_coils"] = self.hf_coil_builder.get_regions_by_region()
 
     # ---------- Accessors ----------
     def get_universe(self):

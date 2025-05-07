@@ -119,7 +119,7 @@ end_plug:
   hf_coil:
     left:
       magnet:
-        bore_radius: 60
+        bore_radius: 66.5
         radial_thickness: 150
         axial_thickness: 150
         material: Magnet_Winding_Pack_2
@@ -134,9 +134,9 @@ end_plug:
         radial_thickness: [30, 30]  # First value: towards central axis, second: away
         axial_thickness: [20, 10]  # First value: towards midplane, second: away
         material: cooled_tungsten_boride
-    right_plug:
+    right:
       magnet:
-        bore_radius: 60
+        bore_radius: 66.5
         radial_thickness: 150
         axial_thickness: 150
         material: Magnet_Winding_Pack_2

@@ -18,9 +18,9 @@ universe_machine = openmc.Universe(786)
 with open("input_files/tandem_parametric_input.yaml", "r") as f:
     input_data = yaml.safe_load(f)
 
-vv_params, fw_params, cyl_params, lf_coil_params = parse_machine_input(input_data, m)
+vv_params, fw_params, cyl_params, lf_coil_params, hf_coil_params = parse_machine_input(input_data, m)
 
-builder = TandemMachineBuilder(vv_params, fw_params, cyl_params, lf_coil_params, m)
+builder = TandemMachineBuilder(vv_params, fw_params, cyl_params, lf_coil_params, hf_coil_params, m)
 builder.build()
 
 universe_machine = builder.get_universe()
