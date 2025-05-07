@@ -18,9 +18,9 @@ universe_machine = openmc.Universe(786)
 with open("input_files/tandem_parametric_input.yaml", "r") as f:
     input_data = yaml.safe_load(f)
 
-vv_params, fw_params, cyl_params, lf_coil_params, hf_coil_params = parse_machine_input(input_data, m)
+vv_params, fw_params, cyl_params, lf_coil_params, hf_coil_params, end_cell_params = parse_machine_input(input_data, m)
 
-builder = TandemMachineBuilder(vv_params, fw_params, cyl_params, lf_coil_params, hf_coil_params, m)
+builder = TandemMachineBuilder(vv_params, fw_params, cyl_params, lf_coil_params, hf_coil_params, end_cell_params, m)
 builder.build()
 
 universe_machine = builder.get_universe()
@@ -33,7 +33,7 @@ geometry = openmc.Geometry([openmc.Cell(fill=universe_machine)])
 # Generate and save the cross-sectional plot of the model
 geometry.root_universe.plot(
     basis='xz', 
-    width=(1000, 2800), 
+    width=(1000, 5100), 
     pixels=(700, 700), 
     color_by='material', 
     #openmc_exec='/opt/openmc/bin/openmc'  # Specify the OpenMC executable path

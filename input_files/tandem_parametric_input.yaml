@@ -168,3 +168,12 @@ end_plug:
       - scores: ['absorption']
         filters: ['fast_energies_filter']
         dimensions: [3,26,12]
+        
+# ________________________________________ END CELL PARAMETERS ________________________________________ #
+
+end_cell:
+  axial_length: 500
+  shell_thickness: 3
+  diameter: 350
+  shell_material: stainless
+  inner_material: vacuum
