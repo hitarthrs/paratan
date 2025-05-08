@@ -3,6 +3,7 @@ import numpy as np
 import openmc.lib
 import matplotlib.pyplot as plt
 from geometry_lib import *
+from tandem_tallies import TallyBuilder
 
 from types import SimpleNamespace
 
@@ -95,7 +96,8 @@ def parse_machine_input(input_data, material_ns):
                 "thicknesses": [layer["thickness"] for layer in hf_coil_data.get(key, {}).get("casing_layers", [])],
                 "materials": [layer["material"] for layer in hf_coil_data.get(key, {}).get("casing_layers", [])]
             },
-            "shield": hf_coil_data.get(key, {}).get("shield", {})
+            "shield": hf_coil_data.get(key, {}).get("shield", {}),
+            "tallies": hf_coil_data.get("hf_coil_tallies", {})
         } for key in ["left", "right"]}
 
     # ---------- 6. End Cell Params --------
@@ -471,6 +473,7 @@ class HFCoilBuilder:
         self._regions_by_region = {region: {"coil": [], "shield": []} for region in ["left", "right"]}
         self._outermost_coil_z0 = {"left": [] , "right": [] }
         self._region_list = []
+        self._tally_descriptors = []
 
     def build_all_sections(self, bottleneck_radii, cc_half_lengths, midplanes, mat_ns, add_cell_callback):
         i = 0
@@ -538,6 +541,16 @@ class HFCoilBuilder:
                 self._regions_by_region[key]["coil"].append(magnet_region)
                 self._cells_by_region[key]["coil"].append(magnet_cell)
                 add_cell_callback(magnet_cell)
+                
+                self._tally_descriptors.append({
+                    "type": "hf_coil",
+                    "location": key,
+                    "direction": direction,
+                    "cell": magnet_cell,
+                    "region": magnet_region,
+                    "cell_tallies": self.coil_data.get(key, {}).get("tallies", {}).get("cell_tallies", []),
+                    "mesh_tallies": self.coil_data.get(key, {}).get("tallies", {}).get("mesh_tallies", [])
+                })
 
                 for j, region in enumerate(casing_regions[1:]):
                     casing_cell = openmc.Cell(
@@ -588,6 +601,12 @@ class HFCoilBuilder:
     
     def get_full_region_list(self):
         return self._region_list
+    
+    def get_all_coil_cells(self):
+        return [cell for side in self._cells_by_region.values() for cell in side["coil"]]
+
+    def get_tally_descriptors(self):
+        return self._tally_descriptors
     
 class EndCellBuilder:
     """
@@ -693,6 +712,7 @@ class TandemMachineBuilder:
         self.lf_coil_builder = None
         self.hf_coil_builder = None
         self.end_cell_builder = None
+        self.tally_builder = TallyBuilder()
 
         self._universe = openmc.Universe(name="TandemMachine")
         self._all_cells = []
@@ -809,7 +829,7 @@ class TandemMachineBuilder:
         )
         self._regions["hf_coils"] = self.hf_coil_builder.get_regions_by_region()
 
-    # ----- 6. End Cells
+    # ----- 6. End Cells -----
         
         self.end_cell_builder = EndCellBuilder(self.end_cell_params)
 
@@ -864,6 +884,9 @@ class TandemMachineBuilder:
 
     def get_z_extents(self):
         return self._z_extents
+    
+    def get_all_tallies(self):
+        return self.tally_builder.get_tallies()
     
     def get_nwl(self):
         return 

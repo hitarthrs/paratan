@@ -152,22 +152,22 @@ end_plug:
         axial_thickness: [20, 10]  # First value: towards midplane, second: away
         material: cooled_tungsten_boride
 
-  hf_coil_tallies:
-    cell_tallies:
-      - scores: ['flux', 'heating']
-        filters: ['neutron_filter']
-        nuclides: ['Li6', 'Li7']
-      - scores: ['absorption']
-        filters: ['fast_energies_filter']
+    hf_coil_tallies:
+      cell_tallies:
+        - scores: ['flux', 'heating']
+          filters: ['neutron_filter']
+          nuclides: ['Li6', 'Li7']
+        - scores: ['absorption']
+          filters: ['fast_energies_filter']
 
-    mesh_tallies:
-      - scores: ['flux', 'heating']
-        filters: ['neutron_filter']
-        nuclides: ['Li6', 'Li7']
-        dimensions: [10,10,10]
-      - scores: ['absorption']
-        filters: ['fast_energies_filter']
-        dimensions: [3,26,12]
+      mesh_tallies:
+        - scores: ['flux', 'heating']
+          filters: ['neutron_filter']
+          nuclides: ['Li6', 'Li7']
+          dimensions: [10,10,10]
+        - scores: ['absorption']
+          filters: ['fast_energies_filter']
+          dimensions: [3,26,12]
         
 # ________________________________________ END CELL PARAMETERS ________________________________________ #
 

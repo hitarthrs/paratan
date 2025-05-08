@@ -1,150 +1,376 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <geometry>
-  <cell fill="786" id="1" universe="1"/>
-  <cell id="100" material="4" region="-2 1 -4 3 -6 5 (15 | -16 | 7) (17 | 18 | -8) (14 | ((-10 | 11) (-12 | 13))) (9 | -7 | 8) (((27 | -28 | 19) (29 | 30 | -20) (26 | ((-22 | 23) (-24 | 25))) (21 | -19 | 20)) | ((-15 16 -7) | (-17 -18 8) | (-14 ((10 -11) | (12 -13))) | (-9 7 -8))) (((39 | -40 | 31) (41 | 42 | -32) (38 | ((-34 | 35) (-36 | 37))) (33 | -31 | 32)) | ((-27 28 -19) | (-29 -30 20) | (-26 ((22 -23) | (24 -25))) | (-21 19 -20))) (44 | -43 | (-39 40 -31) | (-41 -42 32) | (-38 ((34 -35) | (36 -37))) | (-33 31 -32) | 45) (44 | -43 | 46 | -45) (44 | -43 | 47 | -46) (44 | -43 | 48 | -47) (-53 | 56 | 52 | -50 | (54 -55 -51 49)) (-54 | 55 | 51 | -49) (-61 | 64 | 60 | -58 | (62 -63 -59 57)) (-62 | 63 | 59 | -57) (88 | -87 | -81 | 82) (72 | -71 | -65 | 66) (92 | -91 | -83 | 84 | (-90 89 81 -82)) (76 | -75 | -67 | 68 | (-74 73 65 -66)) (96 | -95 | -85 | 86 | (-94 93 83 -84)) (80 | -79 | -69 | 70 | (-78 77 67 -68)) (-109 | 112 | 108 | -106 | (110 -111 -107 105)) (-101 | 104 | 100 | -98 | (102 -103 -99 97)) (-114 | 116 | 118 | (113 -115 -117) | (-39 40 -31) | (-41 -42 32) | (-38 ((34 -35) | (36 -37))) | (-33 31 -32)) (-113 | 115 | 117) (-120 | 122 | 124 | (119 -121 -123) | (-39 40 -31) | (-41 -42 32) | (-38 ((34 -35) | (36 -37))) | (-33 31 -32)) (-119 | 121 | 123)" universe="786"/>
-  <cell id="1000" material="0" region="(-15 16 -7) | (-17 -18 8) | (-14 ((10 -11) | (12 -13))) | (-9 7 -8)" universe="786"/>
-  <cell id="1001" material="31" region="((-27 28 -19) | (-29 -30 20) | (-26 ((22 -23) | (24 -25))) | (-21 19 -20)) ((15 | -16 | 7) (17 | 18 | -8) (14 | ((-10 | 11) (-12 | 13))) (9 | -7 | 8))" universe="786"/>
-  <cell id="1002" material="61" region="((-39 40 -31) | (-41 -42 32) | (-38 ((34 -35) | (36 -37))) | (-33 31 -32)) ((27 | -28 | 19) (29 | 30 | -20) (26 | ((-22 | 23) (-24 | 25))) (21 | -19 | 20))" universe="786"/>
-  <cell id="2000" material="0" region="-44 43 (39 | -40 | 31) (41 | 42 | -32) (38 | ((-34 | 35) (-36 | 37))) (33 | -31 | 32) -45" universe="786"/>
-  <cell id="2001" material="62" region="-44 43 -46 45" universe="786"/>
-  <cell id="2002" material="56" region="-44 43 -47 46" universe="786"/>
-  <cell id="2003" material="16" region="-44 43 -48 47" universe="786"/>
-  <cell id="4000" material="298" region="53 -56 -52 50 (-54 | 55 | 51 | -49)" universe="786"/>
-  <cell id="4001" material="298" region="61 -64 -60 58 (-62 | 63 | 59 | -57)" universe="786"/>
-  <cell id="4100" material="64" region="54 -55 -51 49" universe="786"/>
-  <cell id="4101" material="64" region="62 -63 -59 57" universe="786"/>
-  <cell id="5001" material="298" region="114 -116 -118 (-113 | 115 | 117) (39 | -40 | 31) (41 | 42 | -32) (38 | ((-34 | 35) (-36 | 37))) (33 | -31 | 32)" universe="786"/>
-  <cell id="5002" material="0" region="113 -115 -117" universe="786"/>
-  <cell id="5003" material="298" region="120 -122 -124 (-119 | 121 | 123) (39 | -40 | 31) (41 | 42 | -32) (38 | ((-34 | 35) (-36 | 37))) (33 | -31 | 32)" universe="786"/>
-  <cell id="5004" material="0" region="119 -121 -123" universe="786"/>
-  <cell id="6101" material="64" region="-88 87 81 -82" universe="786"/>
-  <cell id="6102" material="64" region="-72 71 65 -66" universe="786"/>
-  <cell id="6201" material="54" region="101 -104 -100 98 (-102 | 103 | 99 | -97)" universe="786"/>
-  <cell id="6202" material="54" region="109 -112 -108 106 (-110 | 111 | 107 | -105)" universe="786"/>
-  <cell id="6501" material="0" region="(-92 91 83 -84 (90 | -89 | -81 | 82)) | (-76 75 67 -68 (74 | -73 | -65 | 66))" universe="786"/>
-  <cell id="6502" material="49" region="(-96 95 85 -86 (94 | -93 | -83 | 84)) | (-80 79 69 -70 (78 | -77 | -67 | 68))" universe="786"/>
-  <surface boundary="vacuum" coeffs="-400" id="1" type="x-plane"/>
-  <surface boundary="vacuum" coeffs="400" id="2" type="x-plane"/>
-  <surface boundary="vacuum" coeffs="-400" id="3" type="y-plane"/>
-  <surface boundary="vacuum" coeffs="400" id="4" type="y-plane"/>
-  <surface boundary="vacuum" coeffs="-1350" id="5" type="z-plane"/>
-  <surface boundary="vacuum" coeffs="1350" id="6" type="z-plane"/>
-  <surface coeffs="-100" id="7" type="z-plane"/>
-  <surface coeffs="100" id="8" type="z-plane"/>
-  <surface coeffs="0.0 0.0 60" id="9" type="z-cylinder"/>
-  <surface coeffs="-500" id="10" type="z-plane"/>
-  <surface coeffs="-110.10168455465333" id="11" type="z-plane"/>
-  <surface coeffs="110.10168455465333" id="12" type="z-plane"/>
-  <surface coeffs="500" id="13" type="z-plane"/>
-  <surface coeffs="0.0 0.0 22.3" id="14" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 -323.92304845413264 0.07179676972449082" id="15" type="z-cone"/>
-  <surface coeffs="-323.92304845413264" id="16" type="z-plane"/>
-  <surface coeffs="0.0 0.0 323.92304845413264 0.07179676972449082" id="17" type="z-cone"/>
-  <surface coeffs="323.92304845413264" id="18" type="z-plane"/>
-  <surface coeffs="-100" id="19" type="z-plane"/>
-  <surface coeffs="100" id="20" type="z-plane"/>
-  <surface coeffs="0.0 0.0 60.5" id="21" type="z-cylinder"/>
-  <surface coeffs="-500" id="22" type="z-plane"/>
-  <surface coeffs="-110.10168455465333" id="23" type="z-plane"/>
-  <surface coeffs="110.10168455465333" id="24" type="z-plane"/>
-  <surface coeffs="500" id="25" type="z-plane"/>
-  <surface coeffs="0.0 0.0 22.8" id="26" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 -325.78907385791706 0.07179676972449082" id="27" type="z-cone"/>
-  <surface coeffs="-325.78907385791706" id="28" type="z-plane"/>
-  <surface coeffs="0.0 0.0 325.78907385791706 0.07179676972449082" id="29" type="z-cone"/>
-  <surface coeffs="325.78907385791706" id="30" type="z-plane"/>
-  <surface coeffs="-100" id="31" type="z-plane"/>
-  <surface coeffs="100" id="32" type="z-plane"/>
-  <surface coeffs="0.0 0.0 66.0" id="33" type="z-cylinder"/>
-  <surface coeffs="-500" id="34" type="z-plane"/>
-  <surface coeffs="-110.10168455465333" id="35" type="z-plane"/>
-  <surface coeffs="110.10168455465333" id="36" type="z-plane"/>
-  <surface coeffs="500" id="37" type="z-plane"/>
-  <surface coeffs="0.0 0.0 28.3" id="38" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 -346.3153532995459 0.07179676972449082" id="39" type="z-cone"/>
-  <surface coeffs="-346.3153532995459" id="40" type="z-plane"/>
-  <surface coeffs="0.0 0.0 346.3153532995459 0.07179676972449082" id="41" type="z-cone"/>
-  <surface coeffs="346.3153532995459" id="42" type="z-plane"/>
-  <surface coeffs="-200.0" id="43" type="z-plane"/>
-  <surface coeffs="200.0" id="44" type="z-plane"/>
-  <surface coeffs="0.0 0.0 143.0" id="45" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 145.0" id="46" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 175.0" id="47" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 177.5" id="48" type="z-cylinder"/>
-  <surface coeffs="-85.0" id="49" type="z-plane"/>
-  <surface coeffs="-95.0" id="50" type="z-plane"/>
-  <surface coeffs="-65.0" id="51" type="z-plane"/>
-  <surface coeffs="-55.0" id="52" type="z-plane"/>
-  <surface coeffs="0.0 0.0 177.5" id="53" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 187.5" id="54" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 197.5" id="55" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 202.5" id="56" type="z-cylinder"/>
-  <surface coeffs="65.0" id="57" type="z-plane"/>
-  <surface coeffs="55.0" id="58" type="z-plane"/>
-  <surface coeffs="85.0" id="59" type="z-plane"/>
-  <surface coeffs="95.0" id="60" type="z-plane"/>
-  <surface coeffs="0.0 0.0 177.5" id="61" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 187.5" id="62" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 197.5" id="63" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 202.5" id="64" type="z-cylinder"/>
-  <surface coeffs="227.0" id="65" type="z-plane"/>
-  <surface coeffs="377.0" id="66" type="z-plane"/>
-  <surface coeffs="226.0" id="67" type="z-plane"/>
-  <surface coeffs="378.0" id="68" type="z-plane"/>
-  <surface coeffs="225.0" id="69" type="z-plane"/>
-  <surface coeffs="379.0" id="70" type="z-plane"/>
-  <surface coeffs="0.0 0.0 61.3" id="71" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 212.3" id="72" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 61.3" id="73" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 212.3" id="74" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 60.3" id="75" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 213.3" id="76" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 60.3" id="77" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 213.3" id="78" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 59.3" id="79" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 214.3" id="80" type="z-cylinder"/>
-  <surface coeffs="-377.0" id="81" type="z-plane"/>
-  <surface coeffs="-227.0" id="82" type="z-plane"/>
-  <surface coeffs="-378.0" id="83" type="z-plane"/>
-  <surface coeffs="-226.0" id="84" type="z-plane"/>
-  <surface coeffs="-379.0" id="85" type="z-plane"/>
-  <surface coeffs="-225.0" id="86" type="z-plane"/>
-  <surface coeffs="0.0 0.0 61.3" id="87" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 212.3" id="88" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 61.3" id="89" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 212.3" id="90" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 60.3" id="91" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 213.3" id="92" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 60.3" id="93" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 213.3" id="94" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 59.3" id="95" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 214.3" id="96" type="z-cylinder"/>
-  <surface coeffs="225.0" id="97" type="z-plane"/>
-  <surface coeffs="205.0" id="98" type="z-plane"/>
-  <surface coeffs="379.0" id="99" type="z-plane"/>
-  <surface coeffs="399.0" id="100" type="z-plane"/>
-  <surface coeffs="0.0 0.0 29.3" id="101" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 59.3" id="102" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 213.3" id="103" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 243.3" id="104" type="z-cylinder"/>
-  <surface coeffs="-379.0" id="105" type="z-plane"/>
-  <surface coeffs="-399.0" id="106" type="z-plane"/>
-  <surface coeffs="-225.0" id="107" type="z-plane"/>
-  <surface coeffs="-205.0" id="108" type="z-plane"/>
-  <surface coeffs="0.0 0.0 29.3" id="109" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 59.3" id="110" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 213.3" id="111" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 243.3" id="112" type="z-cylinder"/>
-  <surface coeffs="-902.0" id="113" type="z-plane"/>
-  <surface coeffs="-905.0" id="114" type="z-plane"/>
-  <surface coeffs="-402.0" id="115" type="z-plane"/>
-  <surface coeffs="-399.0" id="116" type="z-plane"/>
-  <surface coeffs="0.0 0.0 175.0" id="117" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 178.0" id="118" type="z-cylinder"/>
-  <surface coeffs="402.0" id="119" type="z-plane"/>
-  <surface coeffs="399.0" id="120" type="z-plane"/>
-  <surface coeffs="902.0" id="121" type="z-plane"/>
-  <surface coeffs="905.0" id="122" type="z-plane"/>
-  <surface coeffs="0.0 0.0 175.0" id="123" type="z-cylinder"/>
-  <surface coeffs="0.0 0.0 178.0" id="124" type="z-cylinder"/>
+  <cell id="2" material="0" name="central_vv_cell" region="(-9 10 -1) | (-11 -12 2) | (-8 4 -5) | (-8 6 -7) | (-3 1 -2)" universe="1"/>
+  <cell id="3" material="0" name="right_vv_cell" region="(-21 22 -13) | (-23 -24 14) | (-20 16 -17) | (-20 18 -19) | (-15 13 -14)" universe="1"/>
+  <cell id="4" material="0" name="left_vv_cell" region="(-33 34 -25) | (-35 -36 26) | (-32 28 -29) | (-32 30 -31) | (-27 25 -26)" universe="1"/>
+  <cell id="5" material="31" region="((-45 46 -37) | (-47 -48 38) | (-44 40 -41) | (-44 42 -43) | (-39 37 -38)) ((33 | -34 | 25) (35 | 36 | -26) (32 | -28 | 29) (32 | -30 | 31) (27 | -25 | 26))" universe="1"/>
+  <cell id="6" material="61" region="((-57 58 -49) | (-59 -60 50) | (-56 52 -53) | (-56 54 -55) | (-51 49 -50)) ((45 | -46 | 37) (47 | 48 | -38) (44 | -40 | 41) (44 | -42 | 43) (39 | -37 | 38))" universe="1"/>
+  <cell id="7" material="31" region="((-69 70 -61) | (-71 -72 62) | (-68 64 -65) | (-68 66 -67) | (-63 61 -62)) ((9 | -10 | 1) (11 | 12 | -2) (8 | -4 | 5) (8 | -6 | 7) (3 | -1 | 2))" universe="1"/>
+  <cell id="8" material="61" region="((-81 82 -73) | (-83 -84 74) | (-80 76 -77) | (-80 78 -79) | (-75 73 -74)) ((69 | -70 | 61) (71 | 72 | -62) (68 | -64 | 65) (68 | -66 | 67) (63 | -61 | 62))" universe="1"/>
+  <cell id="9" material="31" region="((-93 94 -85) | (-95 -96 86) | (-92 88 -89) | (-92 90 -91) | (-87 85 -86)) ((21 | -22 | 13) (23 | 24 | -14) (20 | -16 | 17) (20 | -18 | 19) (15 | -13 | 14))" universe="1"/>
+  <cell id="10" material="61" region="((-105 106 -97) | (-107 -108 98) | (-104 100 -101) | (-104 102 -103) | (-99 97 -98)) ((93 | -94 | 85) (95 | 96 | -86) (92 | -88 | 89) (92 | -90 | 91) (87 | -85 | 86))" universe="1"/>
+  <cell id="11" material="0" region="-109 110 (57 | -58 | 49) (59 | 60 | -50) (56 | -52 | 53) (56 | -54 | 55) (51 | -49 | 50) -111" universe="1"/>
+  <cell id="12" material="62" region="-109 110 -112 111" universe="1"/>
+  <cell id="13" material="56" region="-109 110 -113 112" universe="1"/>
+  <cell id="14" material="16" region="-109 110 -114 113" universe="1"/>
+  <cell id="15" material="0" region="-115 116 (81 | -82 | 73) (83 | 84 | -74) (80 | -76 | 77) (80 | -78 | 79) (75 | -73 | 74) -117" universe="1"/>
+  <cell id="16" material="62" region="-115 116 -118 117" universe="1"/>
+  <cell id="17" material="56" region="-115 116 -119 118" universe="1"/>
+  <cell id="18" material="16" region="-115 116 -120 119" universe="1"/>
+  <cell id="19" material="0" region="-121 122 (105 | -106 | 97) (107 | 108 | -98) (104 | -100 | 101) (104 | -102 | 103) (99 | -97 | 98) -123" universe="1"/>
+  <cell id="20" material="62" region="-121 122 -124 123" universe="1"/>
+  <cell id="21" material="56" region="-121 122 -125 124" universe="1"/>
+  <cell id="22" material="16" region="-121 122 -126 125" universe="1"/>
+  <cell id="23" material="4" name="Room" region="-308 307 -310 309 -312 311 (9 | -10 | 1) (11 | 12 | -2) (8 | -4 | 5) (8 | -6 | 7) (3 | -1 | 2) (33 | -34 | 25) (35 | 36 | -26) (32 | -28 | 29) (32 | -30 | 31) (27 | -25 | 26) (21 | -22 | 13) (23 | 24 | -14) (20 | -16 | 17) (20 | -18 | 19) (15 | -13 | 14) (33 | -34 | 25) (35 | 36 | -26) (32 | -28 | 29) (32 | -30 | 31) (27 | -25 | 26) (((45 | -46 | 37) (47 | 48 | -38) (44 | -40 | 41) (44 | -42 | 43) (39 | -37 | 38)) | ((-33 34 -25) | (-35 -36 26) | (-32 28 -29) | (-32 30 -31) | (-27 25 -26))) (((57 | -58 | 49) (59 | 60 | -50) (56 | -52 | 53) (56 | -54 | 55) (51 | -49 | 50)) | ((-45 46 -37) | (-47 -48 38) | (-44 40 -41) | (-44 42 -43) | (-39 37 -38))) (9 | -10 | 1) (11 | 12 | -2) (8 | -4 | 5) (8 | -6 | 7) (3 | -1 | 2) (((69 | -70 | 61) (71 | 72 | -62) (68 | -64 | 65) (68 | -66 | 67) (63 | -61 | 62)) | ((-9 10 -1) | (-11 -12 2) | (-8 4 -5) | (-8 6 -7) | (-3 1 -2))) (((81 | -82 | 73) (83 | 84 | -74) (80 | -76 | 77) (80 | -78 | 79) (75 | -73 | 74)) | ((-69 70 -61) | (-71 -72 62) | (-68 64 -65) | (-68 66 -67) | (-63 61 -62))) (21 | -22 | 13) (23 | 24 | -14) (20 | -16 | 17) (20 | -18 | 19) (15 | -13 | 14) (((93 | -94 | 85) (95 | 96 | -86) (92 | -88 | 89) (92 | -90 | 91) (87 | -85 | 86)) | ((-21 22 -13) | (-23 -24 14) | (-20 16 -17) | (-20 18 -19) | (-15 13 -14))) (((105 | -106 | 97) (107 | 108 | -98) (104 | -100 | 101) (104 | -102 | 103) (99 | -97 | 98)) | ((-93 94 -85) | (-95 -96 86) | (-92 88 -89) | (-92 90 -91) | (-87 85 -86))) (109 | -110 | (-57 58 -49) | (-59 -60 50) | (-56 52 -53) | (-56 54 -55) | (-51 49 -50) | 111) (109 | -110 | 112 | -111) (109 | -110 | 113 | -112) (109 | -110 | 114 | -113) (115 | -116 | (-81 82 -73) | (-83 -84 74) | (-80 76 -77) | (-80 78 -79) | (-75 73 -74) | 117) (115 | -116 | 118 | -117) (115 | -116 | 119 | -118) (115 | -116 | 120 | -119) (121 | -122 | (-105 106 -97) | (-107 -108 98) | (-104 100 -101) | (-104 102 -103) | (-99 97 -98) | 123) (121 | -122 | 124 | -123) (121 | -122 | 125 | -124) (121 | -122 | 126 | -125) (-131 | 134 | 130 | -128 | (132 -133 -129 127)) (-132 | 133 | 129 | -127) (-139 | 142 | 138 | -136 | (140 -141 -137 135)) (-140 | 141 | 137 | -135) (-147 | 150 | 146 | -144 | (148 -149 -145 143)) (-148 | 149 | 145 | -143) (-155 | 158 | 154 | -152 | (156 -157 -153 151)) (-156 | 157 | 153 | -151) (-163 | 166 | 162 | -160 | (164 -165 -161 159)) (-164 | 165 | 161 | -159) (-171 | 174 | 170 | -168 | (172 -173 -169 167)) (-172 | 173 | 169 | -167) (-179 | 182 | 178 | -176 | (180 -181 -177 175)) (-180 | 181 | 177 | -175) (-187 | 190 | 186 | -184 | (188 -189 -185 183)) (-188 | 189 | 185 | -183) (-195 | 198 | 194 | -192 | (196 -197 -193 191)) (-196 | 197 | 193 | -191) (206 | -205 | -199 | 200) (210 | -209 | -201 | 202 | (-208 207 199 -200)) (214 | -213 | -203 | 204 | (-212 211 201 -202)) (-219 | 222 | 218 | -216 | (220 -221 -217 215)) (230 | -229 | -223 | 224) (234 | -233 | -225 | 226 | (-232 231 223 -224)) (238 | -237 | -227 | 228 | (-236 235 225 -226)) (-243 | 246 | 242 | -240 | (244 -245 -241 239)) (254 | -253 | -247 | 248) (258 | -257 | -249 | 250 | (-256 255 247 -248)) (262 | -261 | -251 | 252 | (-260 259 249 -250)) (-267 | 270 | 266 | -264 | (268 -269 -265 263)) (278 | -277 | -271 | 272) (282 | -281 | -273 | 274 | (-280 279 271 -272)) (286 | -285 | -275 | 276 | (-284 283 273 -274)) (-291 | 294 | 290 | -288 | (292 -293 -289 287)) (-296 | 298 | 300 | (295 -297 -299) | (-57 58 -49) | (-59 -60 50) | (-56 52 -53) | (-56 54 -55) | (-51 49 -50)) (-295 | 297 | 299) (-302 | 304 | 306 | (301 -303 -305) | (-105 106 -97) | (-107 -108 98) | (-104 100 -101) | (-104 102 -103) | (-99 97 -98)) (-301 | 303 | 305)" universe="1"/>
+  <cell fill="1" id="24" universe="2"/>
+  <cell id="4000" material="298" region="131 -134 -130 128 (-132 | 133 | 129 | -127)" universe="1"/>
+  <cell id="4001" material="298" region="139 -142 -138 136 (-140 | 141 | 137 | -135)" universe="1"/>
+  <cell id="4002" material="298" region="147 -150 -146 144 (-148 | 149 | 145 | -143)" universe="1"/>
+  <cell id="4003" material="298" region="155 -158 -154 152 (-156 | 157 | 153 | -151)" universe="1"/>
+  <cell id="4004" material="298" region="163 -166 -162 160 (-164 | 165 | 161 | -159)" universe="1"/>
+  <cell id="4005" material="298" region="171 -174 -170 168 (-172 | 173 | 169 | -167)" universe="1"/>
+  <cell id="4006" material="298" region="179 -182 -178 176 (-180 | 181 | 177 | -175)" universe="1"/>
+  <cell id="4007" material="298" region="187 -190 -186 184 (-188 | 189 | 185 | -183)" universe="1"/>
+  <cell id="4008" material="298" region="195 -198 -194 192 (-196 | 197 | 193 | -191)" universe="1"/>
+  <cell id="4100" material="64" region="132 -133 -129 127" universe="1"/>
+  <cell id="4101" material="64" region="140 -141 -137 135" universe="1"/>
+  <cell id="4102" material="64" region="148 -149 -145 143" universe="1"/>
+  <cell id="4103" material="64" region="156 -157 -153 151" universe="1"/>
+  <cell id="4104" material="64" region="164 -165 -161 159" universe="1"/>
+  <cell id="4105" material="64" region="172 -173 -169 167" universe="1"/>
+  <cell id="4106" material="64" region="180 -181 -177 175" universe="1"/>
+  <cell id="4107" material="64" region="188 -189 -185 183" universe="1"/>
+  <cell id="4108" material="64" region="196 -197 -193 191" universe="1"/>
+  <cell id="5001" material="298" region="296 -298 -300 (-295 | 297 | 299) (57 | -58 | 49) (59 | 60 | -50) (56 | -52 | 53) (56 | -54 | 55) (51 | -49 | 50)" universe="1"/>
+  <cell id="5002" material="0" region="295 -297 -299" universe="1"/>
+  <cell id="5003" material="298" region="302 -304 -306 (-301 | 303 | 305) (105 | -106 | 97) (107 | 108 | -98) (104 | -100 | 101) (104 | -102 | 103) (99 | -97 | 98)" universe="1"/>
+  <cell id="5004" material="0" region="301 -303 -305" universe="1"/>
+  <cell id="6100" material="64" region="-206 205 199 -200" universe="1"/>
+  <cell id="6101" material="64" region="-230 229 223 -224" universe="1"/>
+  <cell id="6102" material="64" region="-254 253 247 -248" universe="1"/>
+  <cell id="6103" material="64" region="-278 277 271 -272" universe="1"/>
+  <cell id="6200" material="54" region="219 -222 -218 216 (-220 | 221 | 217 | -215)" universe="1"/>
+  <cell id="6201" material="54" region="243 -246 -242 240 (-244 | 245 | 241 | -239)" universe="1"/>
+  <cell id="6202" material="54" region="267 -270 -266 264 (-268 | 269 | 265 | -263)" universe="1"/>
+  <cell id="6203" material="54" region="291 -294 -290 288 (-292 | 293 | 289 | -287)" universe="1"/>
+  <cell id="6500" material="0" region="-210 209 201 -202 (208 | -207 | -199 | 200)" universe="1"/>
+  <cell id="6501" material="49" region="-214 213 203 -204 (212 | -211 | -201 | 202)" universe="1"/>
+  <cell id="6510" material="0" region="-234 233 225 -226 (232 | -231 | -223 | 224)" universe="1"/>
+  <cell id="6511" material="49" region="-238 237 227 -228 (236 | -235 | -225 | 226)" universe="1"/>
+  <cell id="6520" material="0" region="-258 257 249 -250 (256 | -255 | -247 | 248)" universe="1"/>
+  <cell id="6521" material="49" region="-262 261 251 -252 (260 | -259 | -249 | 250)" universe="1"/>
+  <cell id="6530" material="0" region="-282 281 273 -274 (280 | -279 | -271 | 272)" universe="1"/>
+  <cell id="6531" material="49" region="-286 285 275 -276 (284 | -283 | -273 | 274)" universe="1"/>
+  <surface coeffs="-250.0" id="1" type="z-plane"/>
+  <surface coeffs="250.0" id="2" type="z-plane"/>
+  <surface coeffs="0.0 0.0 90" id="3" type="z-cylinder"/>
+  <surface coeffs="-330.0" id="4" type="z-plane"/>
+  <surface coeffs="-300.0" id="5" type="z-plane"/>
+  <surface coeffs="300.0" id="6" type="z-plane"/>
+  <surface coeffs="330.0" id="7" type="z-plane"/>
+  <surface coeffs="0.0 0.0 30" id="8" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 -400.0 0.36" id="9" type="z-cone"/>
+  <surface coeffs="-400.0" id="10" type="z-plane"/>
+  <surface coeffs="0.0 0.0 400.0 0.36" id="11" type="z-cone"/>
+  <surface coeffs="400.0" id="12" type="z-plane"/>
+  <surface coeffs="675.0" id="13" type="z-plane"/>
+  <surface coeffs="875.0" id="14" type="z-plane"/>
+  <surface coeffs="0.0 0.0 60" id="15" type="z-cylinder"/>
+  <surface coeffs="330.0" id="16" type="z-plane"/>
+  <surface coeffs="600.0" id="17" type="z-plane"/>
+  <surface coeffs="950.0" id="18" type="z-plane"/>
+  <surface coeffs="1250.0" id="19" type="z-plane"/>
+  <surface coeffs="0.0 0.0 30" id="20" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 375.0 0.04000000000000001" id="21" type="z-cone"/>
+  <surface coeffs="375.0" id="22" type="z-plane"/>
+  <surface coeffs="0.0 0.0 1175.0 0.04000000000000001" id="23" type="z-cone"/>
+  <surface coeffs="1175.0" id="24" type="z-plane"/>
+  <surface coeffs="-875.0" id="25" type="z-plane"/>
+  <surface coeffs="-675.0" id="26" type="z-plane"/>
+  <surface coeffs="0.0 0.0 60" id="27" type="z-cylinder"/>
+  <surface coeffs="-1250.0" id="28" type="z-plane"/>
+  <surface coeffs="-950.0" id="29" type="z-plane"/>
+  <surface coeffs="-600.0" id="30" type="z-plane"/>
+  <surface coeffs="-330.0" id="31" type="z-plane"/>
+  <surface coeffs="0.0 0.0 30" id="32" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 -1175.0 0.04000000000000001" id="33" type="z-cone"/>
+  <surface coeffs="-1175.0" id="34" type="z-plane"/>
+  <surface coeffs="0.0 0.0 -375.0 0.04000000000000001" id="35" type="z-cone"/>
+  <surface coeffs="-375.0" id="36" type="z-plane"/>
+  <surface coeffs="-875.0" id="37" type="z-plane"/>
+  <surface coeffs="-675.0" id="38" type="z-plane"/>
+  <surface coeffs="0.0 0.0 60.5" id="39" type="z-cylinder"/>
+  <surface coeffs="-1250.0" id="40" type="z-plane"/>
+  <surface coeffs="-950.0" id="41" type="z-plane"/>
+  <surface coeffs="-600.0" id="42" type="z-plane"/>
+  <surface coeffs="-330.0" id="43" type="z-plane"/>
+  <surface coeffs="0.0 0.0 30.5" id="44" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 -1177.5 0.04000000000000001" id="45" type="z-cone"/>
+  <surface coeffs="-1177.5" id="46" type="z-plane"/>
+  <surface coeffs="0.0 0.0 -372.5 0.04000000000000001" id="47" type="z-cone"/>
+  <surface coeffs="-372.5" id="48" type="z-plane"/>
+  <surface coeffs="-875.0" id="49" type="z-plane"/>
+  <surface coeffs="-675.0" id="50" type="z-plane"/>
+  <surface coeffs="0.0 0.0 63.5" id="51" type="z-cylinder"/>
+  <surface coeffs="-1250.0" id="52" type="z-plane"/>
+  <surface coeffs="-950.0" id="53" type="z-plane"/>
+  <surface coeffs="-600.0" id="54" type="z-plane"/>
+  <surface coeffs="-330.0" id="55" type="z-plane"/>
+  <surface coeffs="0.0 0.0 33.5" id="56" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 -1192.5 0.04000000000000001" id="57" type="z-cone"/>
+  <surface coeffs="-1192.5" id="58" type="z-plane"/>
+  <surface coeffs="0.0 0.0 -357.5 0.04000000000000001" id="59" type="z-cone"/>
+  <surface coeffs="-357.5" id="60" type="z-plane"/>
+  <surface coeffs="-250.0" id="61" type="z-plane"/>
+  <surface coeffs="250.0" id="62" type="z-plane"/>
+  <surface coeffs="0.0 0.0 90.62" id="63" type="z-cylinder"/>
+  <surface coeffs="-330.0" id="64" type="z-plane"/>
+  <surface coeffs="-300.0" id="65" type="z-plane"/>
+  <surface coeffs="300.0" id="66" type="z-plane"/>
+  <surface coeffs="330.0" id="67" type="z-plane"/>
+  <surface coeffs="0.0 0.0 30.62" id="68" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 -401.03333333333336 0.36" id="69" type="z-cone"/>
+  <surface coeffs="-401.03333333333336" id="70" type="z-plane"/>
+  <surface coeffs="0.0 0.0 401.03333333333336 0.36" id="71" type="z-cone"/>
+  <surface coeffs="401.03333333333336" id="72" type="z-plane"/>
+  <surface coeffs="-250.0" id="73" type="z-plane"/>
+  <surface coeffs="250.0" id="74" type="z-plane"/>
+  <surface coeffs="0.0 0.0 95.62" id="75" type="z-cylinder"/>
+  <surface coeffs="-330.0" id="76" type="z-plane"/>
+  <surface coeffs="-300.0" id="77" type="z-plane"/>
+  <surface coeffs="300.0" id="78" type="z-plane"/>
+  <surface coeffs="330.0" id="79" type="z-plane"/>
+  <surface coeffs="0.0 0.0 35.620000000000005" id="80" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 -409.3666666666667 0.36" id="81" type="z-cone"/>
+  <surface coeffs="-409.3666666666667" id="82" type="z-plane"/>
+  <surface coeffs="0.0 0.0 409.3666666666667 0.36" id="83" type="z-cone"/>
+  <surface coeffs="409.3666666666667" id="84" type="z-plane"/>
+  <surface coeffs="675.0" id="85" type="z-plane"/>
+  <surface coeffs="875.0" id="86" type="z-plane"/>
+  <surface coeffs="0.0 0.0 60.5" id="87" type="z-cylinder"/>
+  <surface coeffs="330.0" id="88" type="z-plane"/>
+  <surface coeffs="600.0" id="89" type="z-plane"/>
+  <surface coeffs="950.0" id="90" type="z-plane"/>
+  <surface coeffs="1250.0" id="91" type="z-plane"/>
+  <surface coeffs="0.0 0.0 30.5" id="92" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 372.5 0.04000000000000001" id="93" type="z-cone"/>
+  <surface coeffs="372.5" id="94" type="z-plane"/>
+  <surface coeffs="0.0 0.0 1177.5 0.04000000000000001" id="95" type="z-cone"/>
+  <surface coeffs="1177.5" id="96" type="z-plane"/>
+  <surface coeffs="675.0" id="97" type="z-plane"/>
+  <surface coeffs="875.0" id="98" type="z-plane"/>
+  <surface coeffs="0.0 0.0 63.5" id="99" type="z-cylinder"/>
+  <surface coeffs="330.0" id="100" type="z-plane"/>
+  <surface coeffs="600.0" id="101" type="z-plane"/>
+  <surface coeffs="950.0" id="102" type="z-plane"/>
+  <surface coeffs="1250.0" id="103" type="z-plane"/>
+  <surface coeffs="0.0 0.0 33.5" id="104" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 357.5 0.04000000000000001" id="105" type="z-cone"/>
+  <surface coeffs="357.5" id="106" type="z-plane"/>
+  <surface coeffs="0.0 0.0 1192.5 0.04000000000000001" id="107" type="z-cone"/>
+  <surface coeffs="1192.5" id="108" type="z-plane"/>
+  <surface coeffs="-595.0" id="109" type="z-plane"/>
+  <surface coeffs="-955.0" id="110" type="z-plane"/>
+  <surface coeffs="0.0 0.0 133.5" id="111" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 138.5" id="112" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 158.5" id="113" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 163.5" id="114" type="z-cylinder"/>
+  <surface coeffs="310.0" id="115" type="z-plane"/>
+  <surface coeffs="-310.0" id="116" type="z-plane"/>
+  <surface coeffs="0.0 0.0 172.62" id="117" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 174.62" id="118" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 204.62" id="119" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 207.12" id="120" type="z-cylinder"/>
+  <surface coeffs="955.0" id="121" type="z-plane"/>
+  <surface coeffs="595.0" id="122" type="z-plane"/>
+  <surface coeffs="0.0 0.0 133.5" id="123" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 138.5" id="124" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 158.5" id="125" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 163.5" id="126" type="z-cylinder"/>
+  <surface coeffs="-860.0" id="127" type="z-plane"/>
+  <surface coeffs="-870.0" id="128" type="z-plane"/>
+  <surface coeffs="-840.0" id="129" type="z-plane"/>
+  <surface coeffs="-830.0" id="130" type="z-plane"/>
+  <surface coeffs="0.0 0.0 163.5" id="131" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 173.5" id="132" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 183.5" id="133" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 188.5" id="134" type="z-cylinder"/>
+  <surface coeffs="-710.0" id="135" type="z-plane"/>
+  <surface coeffs="-720.0" id="136" type="z-plane"/>
+  <surface coeffs="-690.0" id="137" type="z-plane"/>
+  <surface coeffs="-680.0" id="138" type="z-plane"/>
+  <surface coeffs="0.0 0.0 163.5" id="139" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 173.5" id="140" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 183.5" id="141" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 188.5" id="142" type="z-cylinder"/>
+  <surface coeffs="-165.0" id="143" type="z-plane"/>
+  <surface coeffs="-175.0" id="144" type="z-plane"/>
+  <surface coeffs="-145.0" id="145" type="z-plane"/>
+  <surface coeffs="-135.0" id="146" type="z-plane"/>
+  <surface coeffs="0.0 0.0 207.12" id="147" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 217.12" id="148" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 227.12" id="149" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 232.12" id="150" type="z-cylinder"/>
+  <surface coeffs="-80.0" id="151" type="z-plane"/>
+  <surface coeffs="-90.0" id="152" type="z-plane"/>
+  <surface coeffs="-60.0" id="153" type="z-plane"/>
+  <surface coeffs="-50.0" id="154" type="z-plane"/>
+  <surface coeffs="0.0 0.0 207.12" id="155" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 217.12" id="156" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 227.12" id="157" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 232.12" id="158" type="z-cylinder"/>
+  <surface coeffs="-10.0" id="159" type="z-plane"/>
+  <surface coeffs="-20.0" id="160" type="z-plane"/>
+  <surface coeffs="10.0" id="161" type="z-plane"/>
+  <surface coeffs="20.0" id="162" type="z-plane"/>
+  <surface coeffs="0.0 0.0 207.12" id="163" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 217.12" id="164" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 227.12" id="165" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 232.12" id="166" type="z-cylinder"/>
+  <surface coeffs="60.0" id="167" type="z-plane"/>
+  <surface coeffs="50.0" id="168" type="z-plane"/>
+  <surface coeffs="80.0" id="169" type="z-plane"/>
+  <surface coeffs="90.0" id="170" type="z-plane"/>
+  <surface coeffs="0.0 0.0 207.12" id="171" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 217.12" id="172" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 227.12" id="173" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 232.12" id="174" type="z-cylinder"/>
+  <surface coeffs="145.0" id="175" type="z-plane"/>
+  <surface coeffs="135.0" id="176" type="z-plane"/>
+  <surface coeffs="165.0" id="177" type="z-plane"/>
+  <surface coeffs="175.0" id="178" type="z-plane"/>
+  <surface coeffs="0.0 0.0 207.12" id="179" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 217.12" id="180" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 227.12" id="181" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 232.12" id="182" type="z-cylinder"/>
+  <surface coeffs="690.0" id="183" type="z-plane"/>
+  <surface coeffs="680.0" id="184" type="z-plane"/>
+  <surface coeffs="710.0" id="185" type="z-plane"/>
+  <surface coeffs="720.0" id="186" type="z-plane"/>
+  <surface coeffs="0.0 0.0 163.5" id="187" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 173.5" id="188" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 183.5" id="189" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 188.5" id="190" type="z-cylinder"/>
+  <surface coeffs="840.0" id="191" type="z-plane"/>
+  <surface coeffs="830.0" id="192" type="z-plane"/>
+  <surface coeffs="860.0" id="193" type="z-plane"/>
+  <surface coeffs="870.0" id="194" type="z-plane"/>
+  <surface coeffs="0.0 0.0 163.5" id="195" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 173.5" id="196" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 183.5" id="197" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 188.5" id="198" type="z-cylinder"/>
+  <surface coeffs="-568.0" id="199" type="z-plane"/>
+  <surface coeffs="-418.0" id="200" type="z-plane"/>
+  <surface coeffs="-569.0" id="201" type="z-plane"/>
+  <surface coeffs="-417.0" id="202" type="z-plane"/>
+  <surface coeffs="-570.0" id="203" type="z-plane"/>
+  <surface coeffs="-416.0" id="204" type="z-plane"/>
+  <surface coeffs="0.0 0.0 66.5" id="205" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 217.5" id="206" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 66.5" id="207" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 217.5" id="208" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 65.5" id="209" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 218.5" id="210" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 65.5" id="211" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 218.5" id="212" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 64.5" id="213" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 219.5" id="214" type="z-cylinder"/>
+  <surface coeffs="-570.0" id="215" type="z-plane"/>
+  <surface coeffs="-590.0" id="216" type="z-plane"/>
+  <surface coeffs="-416.0" id="217" type="z-plane"/>
+  <surface coeffs="-396.0" id="218" type="z-plane"/>
+  <surface coeffs="0.0 0.0 34.5" id="219" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 64.5" id="220" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 218.5" id="221" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 248.5" id="222" type="z-cylinder"/>
+  <surface coeffs="-1132.0" id="223" type="z-plane"/>
+  <surface coeffs="-982.0" id="224" type="z-plane"/>
+  <surface coeffs="-1133.0" id="225" type="z-plane"/>
+  <surface coeffs="-981.0" id="226" type="z-plane"/>
+  <surface coeffs="-1134.0" id="227" type="z-plane"/>
+  <surface coeffs="-980.0" id="228" type="z-plane"/>
+  <surface coeffs="0.0 0.0 66.5" id="229" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 217.5" id="230" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 66.5" id="231" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 217.5" id="232" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 65.5" id="233" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 218.5" id="234" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 65.5" id="235" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 218.5" id="236" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 64.5" id="237" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 219.5" id="238" type="z-cylinder"/>
+  <surface coeffs="-1134.0" id="239" type="z-plane"/>
+  <surface coeffs="-1154.0" id="240" type="z-plane"/>
+  <surface coeffs="-980.0" id="241" type="z-plane"/>
+  <surface coeffs="-960.0" id="242" type="z-plane"/>
+  <surface coeffs="0.0 0.0 34.5" id="243" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 64.5" id="244" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 218.5" id="245" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 248.5" id="246" type="z-cylinder"/>
+  <surface coeffs="418.0" id="247" type="z-plane"/>
+  <surface coeffs="568.0" id="248" type="z-plane"/>
+  <surface coeffs="417.0" id="249" type="z-plane"/>
+  <surface coeffs="569.0" id="250" type="z-plane"/>
+  <surface coeffs="416.0" id="251" type="z-plane"/>
+  <surface coeffs="570.0" id="252" type="z-plane"/>
+  <surface coeffs="0.0 0.0 66.5" id="253" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 217.5" id="254" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 66.5" id="255" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 217.5" id="256" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 65.5" id="257" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 218.5" id="258" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 65.5" id="259" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 218.5" id="260" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 64.5" id="261" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 219.5" id="262" type="z-cylinder"/>
+  <surface coeffs="416.0" id="263" type="z-plane"/>
+  <surface coeffs="396.0" id="264" type="z-plane"/>
+  <surface coeffs="570.0" id="265" type="z-plane"/>
+  <surface coeffs="590.0" id="266" type="z-plane"/>
+  <surface coeffs="0.0 0.0 34.5" id="267" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 64.5" id="268" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 218.5" id="269" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 248.5" id="270" type="z-cylinder"/>
+  <surface coeffs="982.0" id="271" type="z-plane"/>
+  <surface coeffs="1132.0" id="272" type="z-plane"/>
+  <surface coeffs="981.0" id="273" type="z-plane"/>
+  <surface coeffs="1133.0" id="274" type="z-plane"/>
+  <surface coeffs="980.0" id="275" type="z-plane"/>
+  <surface coeffs="1134.0" id="276" type="z-plane"/>
+  <surface coeffs="0.0 0.0 66.5" id="277" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 217.5" id="278" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 66.5" id="279" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 217.5" id="280" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 65.5" id="281" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 218.5" id="282" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 65.5" id="283" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 218.5" id="284" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 64.5" id="285" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 219.5" id="286" type="z-cylinder"/>
+  <surface coeffs="980.0" id="287" type="z-plane"/>
+  <surface coeffs="960.0" id="288" type="z-plane"/>
+  <surface coeffs="1134.0" id="289" type="z-plane"/>
+  <surface coeffs="1154.0" id="290" type="z-plane"/>
+  <surface coeffs="0.0 0.0 34.5" id="291" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 64.5" id="292" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 218.5" id="293" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 248.5" id="294" type="z-cylinder"/>
+  <surface coeffs="-1657.0" id="295" type="z-plane"/>
+  <surface coeffs="-1660.0" id="296" type="z-plane"/>
+  <surface coeffs="-1157.0" id="297" type="z-plane"/>
+  <surface coeffs="-1154.0" id="298" type="z-plane"/>
+  <surface coeffs="0.0 0.0 172.0" id="299" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 175.0" id="300" type="z-cylinder"/>
+  <surface coeffs="1157.0" id="301" type="z-plane"/>
+  <surface coeffs="1154.0" id="302" type="z-plane"/>
+  <surface coeffs="1657.0" id="303" type="z-plane"/>
+  <surface coeffs="1660.0" id="304" type="z-plane"/>
+  <surface coeffs="0.0 0.0 172.0" id="305" type="z-cylinder"/>
+  <surface coeffs="0.0 0.0 175.0" id="306" type="z-cylinder"/>
+  <surface boundary="vacuum" coeffs="-450" id="307" type="x-plane"/>
+  <surface boundary="vacuum" coeffs="450" id="308" type="x-plane"/>
+  <surface boundary="vacuum" coeffs="-450" id="309" type="y-plane"/>
+  <surface boundary="vacuum" coeffs="450" id="310" type="y-plane"/>
+  <surface boundary="vacuum" coeffs="-2000" id="311" type="z-plane"/>
+  <surface boundary="vacuum" coeffs="2000" id="312" type="z-plane"/>
 </geometry>

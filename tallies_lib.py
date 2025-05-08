@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import openmc
-import parametric_input as param
+# import parametric_input as param
 import yaml
 from geometry_lib import *
 
@@ -38,6 +38,8 @@ def hollow_mesh_from_domain(domain, dimensions= [10, 10, 10], phi_grid_bounds=(0
     # Check if the type of domain is an openmc.Cell
     if type(domain) == openmc.Cell:
         region = domain.region
+    elif type(domain) == openmc.Region:
+        region = domain
     
     # Subtract the original region to define hollow space
     hollow_region = outer_region & ~region
@@ -151,20 +153,20 @@ def generate_cell_tallies_from_region(input_data: dict, region_name: str, cell: 
 
     return tallies
 
-with open('parametric_input.yaml', 'r') as f:
-    input_data = yaml.safe_load(f)
+# with open('parametric_input.yaml', 'r') as f:
+#     input_data = yaml.safe_load(f)
 
-lf_coil_shell, lf_coil_inner = hollow_cylinder_with_shell(
-        2,      # Coil center position
-        10,  # Outer reference radius
-        15,    # Radial thickness of the coil
-        15,  # Inner axial length
-        3,  # Shell front thickness
-        3,   # Shell back thickness
-        3   # Shell axial thickness
-    )
+# lf_coil_shell, lf_coil_inner = hollow_cylinder_with_shell(
+#         2,      # Coil center position
+#         10,  # Outer reference radius
+#         15,    # Radial thickness of the coil
+#         15,  # Inner axial length
+#         3,  # Shell front thickness
+#         3,   # Shell back thickness
+#         3   # Shell axial thickness
+#     )
 
-lf_coil_chell_cell = openmc.Cell(region = lf_coil_shell)
+# lf_coil_chell_cell = openmc.Cell(region = lf_coil_shell)
 
-tallies = generate_cell_tallies_from_region(input_data, 'lf_coil_tallies', lf_coil_chell_cell)
+# tallies = generate_cell_tallies_from_region(input_data, 'lf_coil_tallies', lf_coil_chell_cell)
 
