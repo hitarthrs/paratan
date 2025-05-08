@@ -21,16 +21,8 @@ universe_machine = builder.get_universe()
 geometry = openmc.Geometry([openmc.Cell(fill=universe_machine)])
 
 # ------------------ Tally Setup ------------------ #
-# 1. Grab the descriptors from HFCoilBuilder
-hf_descriptors = builder.hf_coil_builder.get_tally_descriptors()
-
-# 2. Use the TallyBuilder
-tally_builder = TallyBuilder()
-tally_builder.add_descriptors(hf_descriptors)
-
-
 # 3. Get tallies and export to XML
-tallies = tally_builder.get_tallies()
+tallies = builder.get_all_tallies()
 print(tallies)
 
 # ------------------ Plot Geometry ------------------ #

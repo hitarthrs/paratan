@@ -47,6 +47,31 @@ central_cell:
       - thickness: 2.5
         material: water_cooled_wc  # HT Shield Back Plate
 
+    tallies:
+      breeder:
+        cell_tallies:
+          - scores: ['flux', 'heating', 'H3-production']
+            filters: ['neutron_filter']
+            nuclides: ['Li6', 'Li7']
+
+      # layer_tallies:
+      #   - position: 2
+      #     cell_tallies:
+      #       - scores: ['flux', 'heating', 'H3-production']
+      #         filters: ['neutron_filter']
+      #         nuclides: ['Li6', 'Li7']
+      #     mesh_tallies:
+      #       - scores: ['flux', 'heating']
+      #         filters: ['neutron_filter']
+      #         nuclides: ['Li6', 'Li7']
+      #         dimensions: [10,10,10]
+      #   - position: 3
+      #     cell_tallies:
+      #       - scores: ['heating']
+      #         filters: ['thermal_energies_filter']
+
+
+
 # ________________________________________ CENTRAL CELL LF COIL PARAMETERS ________________________________________ #
 
   lf_coil:
@@ -61,6 +86,23 @@ central_cell:
     materials:
       shield: stainless
       magnet: Magnet_Winding_Pack_2
+
+  # ________________________________________CENTRAL CELL LF COIL TALLY FLAGS ________________________________________ #
+
+    # lf_coil_tallies:
+    #   cell_tallies:
+    #     - scores: ['flux', 'heating']
+    #       filters: ['neutron_filter']
+    #       nuclides: ['Li6', 'Li7']
+    #     - scores: ['absorption']
+    #       filters: ['fast_energies_filter']
+
+    #   mesh_tallies:
+    #     - scores: ['flux', 'heating']
+    #       filters: ['neutron_filter']
+    #       nuclides: ['Li6', 'Li7']
+    #       dimensions: [10,10,10]
+    
 
 
 # _________________________________________ END PLUG INFORMATION _____________________________________ #
@@ -80,6 +122,28 @@ end_plug:
         material: HT_Shield_filler  # HT Shield Filler
       - thickness: 5
         material: water_cooled_wc  # HT Shield Back Plate
+    tallies:
+      breeder:
+        cell_tallies:
+          - scores: ['flux', 'heating', 'H3-production']
+            filters: ['neutron_filter']
+            nuclides: ['Li6', 'Li7']
+
+      # layer_tallies:
+      #   - position: 2
+      #     cell_tallies:
+      #       - scores: ['flux', 'heating', 'H3-production']
+      #         filters: ['neutron_filter']
+      #         nuclides: ['Li6', 'Li7']
+      #     mesh_tallies:
+      #       - scores: ['flux', 'heating']
+      #         filters: ['neutron_filter']
+      #         nuclides: ['Li6', 'Li7']
+      #         dimensions: [10,10,10]
+      #   - position: 3
+      #     cell_tallies:
+      #       - scores: ['heating']
+      #         filters: ['thermal_energies_filter']
 
   # ________________________________________ LF COIL PARAMETERS ________________________________________ #
 
@@ -96,24 +160,23 @@ end_plug:
       shield: stainless
       magnet: Magnet_Winding_Pack_2
 
-  # ________________________________________ LF COIL TALLY FLAGS ________________________________________ #
 
-  lf_coil_tallies:
-    cell_tallies:
-      - scores: ['flux', 'heating']
-        filters: ['neutron_filter']
-        nuclides: ['Li6', 'Li7']
-      - scores: ['absorption']
-        filters: ['fast_energies_filter']
 
-    mesh_tallies:
-      - scores: ['flux', 'heating']
-        filters: ['neutron_filter']
-        nuclides: ['Li6', 'Li7']
-        dimensions: [10,10,10]
-      - scores: ['absorption']
-        filters: ['fast_energies_filter']
-        dimensions: [3,6,12]
+    # ________________________________________ LF COIL TALLY FLAGS ________________________________________ #
+
+    # lf_coil_tallies:
+    #   cell_tallies:
+    #     - scores: ['flux', 'heating']
+    #       filters: ['neutron_filter']
+    #       nuclides: ['Li6', 'Li7']
+    #     - scores: ['absorption']
+    #       filters: ['fast_energies_filter']
+
+    #   mesh_tallies:
+    #     - scores: ['flux', 'heating']
+    #       filters: ['neutron_filter']
+    #       nuclides: ['Li6', 'Li7']
+    #       dimensions: [10,10,10]
   # ________________________________________ HF COIL PARAMETERS ________________________________________ #
 
   hf_coil:
@@ -152,22 +215,22 @@ end_plug:
         axial_thickness: [20, 10]  # First value: towards midplane, second: away
         material: cooled_tungsten_boride
 
-    hf_coil_tallies:
-      cell_tallies:
-        - scores: ['flux', 'heating']
-          filters: ['neutron_filter']
-          nuclides: ['Li6', 'Li7']
-        - scores: ['absorption']
-          filters: ['fast_energies_filter']
+    # hf_coil_tallies:
+    #   cell_tallies:
+    #     - scores: ['flux', 'heating']
+    #       filters: ['neutron_filter']
+    #       nuclides: ['Li6', 'Li7']
+    #     - scores: ['absorption']
+    #       filters: ['fast_energies_filter']
 
-      mesh_tallies:
-        - scores: ['flux', 'heating']
-          filters: ['neutron_filter']
-          nuclides: ['Li6', 'Li7']
-          dimensions: [10,10,10]
-        - scores: ['absorption']
-          filters: ['fast_energies_filter']
-          dimensions: [3,26,12]
+    #   mesh_tallies:
+    #     - scores: ['flux', 'heating']
+    #       filters: ['neutron_filter']
+    #       nuclides: ['Li6', 'Li7']
+    #       dimensions: [10,10,10]
+    #     - scores: ['absorption']
+    #       filters: ['fast_energies_filter']
+    #       dimensions: [3,26,12]
         
 # ________________________________________ END CELL PARAMETERS ________________________________________ #
 

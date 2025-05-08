@@ -64,6 +64,9 @@ def parse_machine_input(input_data, material_ns):
     cc_cyl_layers = input_data["central_cell"]["blanket"]["layers"]
     ep_cyl_layers = input_data["end_plug"]["central_cylinder"]["layers"]
 
+    blanket_info_cc = input_data.get("central_cell", {}).get("blanket", {}).get("tallies", {})
+    blanket_info_ep = input_data.get("end_plug", {}).get("central_cylinder", {}).get("tallies", {})
+
     cyl_params = {
         "left": ep_cyl_layers,
         "central": cc_cyl_layers,
@@ -77,13 +80,44 @@ def parse_machine_input(input_data, material_ns):
             "central": input_data["central_cell"]["blanket"]["axial_length"],
             "left": input_data["end_plug"]["central_cylinder"]["axial_length"],
             "right": input_data["end_plug"]["central_cylinder"]["axial_length"],
+        },
+        "tallies": {
+            "central": {
+                "breeder": blanket_info_cc.get("breeder", {}),
+                "layers": {
+                    entry["position"]: {
+                        "cell_tallies": entry.get("cell_tallies", []),
+                        "mesh_tallies": entry.get("mesh_tallies", [])
+                    } for entry in blanket_info_cc.get("layer_tallies", [])
+                }
+            },
+            "left": {
+                "breeder": blanket_info_ep.get("breeder", {}),
+                "layers": {
+                    entry["position"]: {
+                        "cell_tallies": entry.get("cell_tallies", []),
+                        "mesh_tallies": entry.get("mesh_tallies", [])
+                    } for entry in blanket_info_ep.get("layer_tallies", [])
+                }
+            },
+            "right": {
+                "breeder": blanket_info_ep.get("breeder", {}),
+                "layers": {
+                    entry["position"]: {
+                        "cell_tallies": entry.get("cell_tallies", []),
+                        "mesh_tallies": entry.get("mesh_tallies", [])
+                    } for entry in blanket_info_ep.get("layer_tallies", [])
+                }
+            }
         }
     }
 
     # --------- 4. LF Coil Params ---------
     lf_coil_params = {
         "central": input_data.get("central_cell", {}).get("lf_coil", {}),
-        "end": input_data.get("end_plug", {}).get("lf_coil", {})
+        "end": input_data.get("end_plug", {}).get("lf_coil", {}),
+        "central_tallies": input_data.get("central_cell", {}).get("lf_coil", {}).get("lf_coil_tallies", {}),
+        "end_tallies": input_data.get("end_plug", {}).get("lf_coil", {}).get("lf_coil_tallies", {})
     }
 
     # --------- 5. HF Coil Params ---------
@@ -300,15 +334,19 @@ class TandemCentralCylinders:
     Uses outermost FW region as base to define first shell.
     """
 
-    def __init__(self, left_layers, central_layers, right_layers=None):
+    def __init__(self, left_layers, central_layers, right_layers=None, tally_data=None):
         self.left_layers = left_layers
         self.central_layers = central_layers
         self.right_layers = right_layers if right_layers else left_layers
+
+        self.tally_data = tally_data or {"left": {}, "central": {}, "right": {}}
+
         self._cells_by_region = {"left": [], "central": [], "right": []}
         self._regions_by_region = {"left": [], "central": [], "right": []}
         self._z_extents = {}
         self._region_list = []
         self._radii_by_region = {"left": [], "central": [], "right": []}
+        self._tally_descriptors = []
 
     def build_all_sections(self, base_radii, midplanes, axial_lengths, base_regions, mat_ns, add_cell_callback):
         for key, layers in zip(["left", "central", "right"], [self.left_layers, self.central_layers, self.right_layers]):
@@ -317,34 +355,42 @@ class TandemCentralCylinders:
             zmin, zmax = z0 - half_len, z0 + half_len
             self._z_extents[key] = (zmin, zmax)
 
-            # Radial shell construction
             thicknesses = [layer["thickness"] for layer in layers]
             materials = [getattr(mat_ns, layer["material"]) for layer in layers]
             radii = base_radii[key] + np.cumsum(thicknesses)
-
             self._radii_by_region[key] = radii
 
             zplanes = -openmc.ZPlane(z0=zmax) & +openmc.ZPlane(z0=zmin)
             prev_cyl = openmc.ZCylinder(r=radii[0])
 
-            first_region = zplanes & ~base_regions[key] & -prev_cyl
-            self._regions_by_region[key].append(first_region)
-            self._region_list.append(first_region)
+            for i in range(len(radii)):
+                if i == 0:
+                    region = zplanes & ~base_regions[key] & -prev_cyl
+                else:
+                    next_cyl = openmc.ZCylinder(r=radii[i])
+                    region = zplanes & -next_cyl & +prev_cyl
+                    prev_cyl = next_cyl
 
-            cells = [openmc.Cell(region=first_region, fill=materials[0])]
-            add_cell_callback(cells[-1])
+                cell = openmc.Cell(region=region, fill=materials[i])
+                add_cell_callback(cell)
 
-            for i in range(1, len(radii)):
-                next_cyl = openmc.ZCylinder(r=radii[i])
-                region = zplanes & -next_cyl & +prev_cyl
                 self._regions_by_region[key].append(region)
                 self._region_list.append(region)
-                cell = openmc.Cell(region=region, fill=materials[i])
-                cells.append(cell)
-                add_cell_callback(cell)
-                prev_cyl = next_cyl
+                self._cells_by_region[key].append(cell)
 
-            self._cells_by_region[key] = cells
+                desc = "breeder" if i == 0 else f"layer_{i}"
+                tally = self.tally_data.get(key, {})
+                layer_tallies = tally.get("breeder", {}) if i == 0 else tally.get("layers", {}).get(i, {})
+
+                self._tally_descriptors.append({
+                    "type": "blanket",
+                    "location": key,
+                    "description": desc,
+                    "cell": cell,
+                    "region": region,
+                    "cell_tallies": layer_tallies.get("cell_tallies", []),
+                    "mesh_tallies": layer_tallies.get("mesh_tallies", [])
+                })
 
     def get_cells_by_region(self):
         return self._cells_by_region
@@ -354,12 +400,15 @@ class TandemCentralCylinders:
 
     def get_z_extents(self):
         return self._z_extents
-    
+
     def get_radii_by_region(self):
         return self._radii_by_region
-    
+
     def get_full_region_list(self):
         return self._region_list
+
+    def get_tally_descriptors(self):
+        return self._tally_descriptors
     
 class LFCoilBuilder:
     """
@@ -379,10 +428,16 @@ class LFCoilBuilder:
             "central": lf_coil_params.get("central", {}),
             "end": lf_coil_params.get("end", {})
         }
+        
+        self.tally_data = {
+            "central": lf_coil_params.get("central_tallies", {}),
+            "end": lf_coil_params.get("end_tallies", {})
+        }
 
         self._cells_by_region = {region: {"coil": [], "shield": []} for region in ["left", "central", "right"]}
         self._regions_by_region = {region: {"coil": [], "shield": []} for region in ["left", "central", "right"]}
         self._region_list = []
+        self._tally_descriptors = []
 
     def build_all_sections(self, outer_radii_by_region, midplanes, mat_ns, add_cell_callback):
         """
@@ -401,6 +456,7 @@ class LFCoilBuilder:
         for key in ["left", "central", "right"]:
             data_key = "central" if key == "central" else "end"
             coil_data = self.coil_data.get(data_key, {})
+            tally_data = self.tally_data.get(data_key, {})
 
             positions = coil_data.get("positions", [])
             inner_dims = coil_data.get("inner_dimensions", {})
@@ -412,6 +468,7 @@ class LFCoilBuilder:
             coil_cells = []
             shield_cells = []
 
+            pos_i = 1
             for z_offset in positions:
                 z_center = midplanes[key] + z_offset
 
@@ -444,6 +501,18 @@ class LFCoilBuilder:
                 self._region_list.append(coil_region)
                 self._cells_by_region[key]["shield"].append(shield_cell)
                 self._cells_by_region[key]["coil"].append(coil_cell)
+                
+                # Add tally descriptor for coil (not shield)
+                self._tally_descriptors.append({
+                    "type": "lf_coil",
+                    "location": key,
+                    "description": pos_i,
+                    "cell": coil_cell,
+                    "region": coil_region,
+                    "cell_tallies": tally_data.get("cell_tallies", []),
+                    "mesh_tallies": tally_data.get("mesh_tallies", [])
+                })
+                
                 i += 1
 
     def get_cells_by_region(self):
@@ -454,6 +523,9 @@ class LFCoilBuilder:
     
     def get_full_region_list(self):
         return self._region_list
+    
+    def get_tally_descriptors(self):
+        return self._tally_descriptors
 
 class HFCoilBuilder:
     """
@@ -545,7 +617,7 @@ class HFCoilBuilder:
                 self._tally_descriptors.append({
                     "type": "hf_coil",
                     "location": key,
-                    "direction": direction,
+                    "description": direction,
                     "cell": magnet_cell,
                     "region": magnet_region,
                     "cell_tallies": self.coil_data.get(key, {}).get("tallies", {}).get("cell_tallies", []),
@@ -772,7 +844,8 @@ class TandemMachineBuilder:
         self.ccyl_builder = TandemCentralCylinders(
             self.central_cyl_params["left"],
             self.central_cyl_params["central"],
-            self.central_cyl_params.get("right", None)
+            self.central_cyl_params.get("right", None),
+            self.central_cyl_params.get("tallies", None)
         )
 
         self.ccyl_builder.build_all_sections(
@@ -786,6 +859,12 @@ class TandemMachineBuilder:
 
         self._regions["cyl"] = self.ccyl_builder.get_regions_by_region()
         self._z_extents["cyl"] = self.ccyl_builder.get_z_extents()
+        
+        ccyl_descriptors = self.ccyl_builder.get_tally_descriptors()
+        
+        print(ccyl_descriptors)
+        
+        self.tally_builder.add_descriptors(ccyl_descriptors)
 
         # ----- LF Coils ------
         
@@ -801,6 +880,10 @@ class TandemMachineBuilder:
         )
 
         self._regions["lf_coils"] = self.lf_coil_builder.get_regions_by_region()
+        
+        lf_coil_descriptors = self.lf_coil_builder.get_tally_descriptors()
+        
+        self.tally_builder.add_descriptors(lf_coil_descriptors)
 
         # ----- 5. HF Coils -----
         
@@ -828,6 +911,12 @@ class TandemMachineBuilder:
             add_cell_callback=self._add_cell
         )
         self._regions["hf_coils"] = self.hf_coil_builder.get_regions_by_region()
+        
+        hf_coil_descriptors = self.hf_coil_builder.get_tally_descriptors()
+        
+        self.tally_builder.add_descriptors(hf_coil_descriptors)
+
+
 
     # ----- 6. End Cells -----
         
