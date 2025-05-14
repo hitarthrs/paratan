@@ -2,8 +2,8 @@ import openmc
 import numpy as np
 import openmc.lib
 import matplotlib.pyplot as plt
-from geometry_lib import *
-from tandem_tallies import TallyBuilder
+from function_libraries.geometry_lib import *
+from function_libraries.tandem_tallies_lib import TallyBuilder
 
 from types import SimpleNamespace
 

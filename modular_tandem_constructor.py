@@ -2,11 +2,11 @@ import openmc
 import numpy as np
 import matplotlib.pyplot as plt
 import material as m
-from geometry_lib import *
-from source_lib import *
+from function_libraries.geometry_lib import *
+from function_libraries.source_lib import *
 import yaml
 from tandem_geometry import *
-from tandem_tallies import TallyBuilder  # if needed for standalone setup
+from function_libraries.tandem_tallies_lib import TallyBuilder  # if needed for standalone setup
 
 # ------------------ Load Input ------------------ #
 with open("input_files/tandem_parametric_input.yaml", "r") as f:
@@ -91,8 +91,10 @@ settings.weight_windows_generator = [wwg]
 settings.photon_transport = source_data['settings']['photon_transport']
 settings.source = source
 
+
 # ------------------ Final Model ------------------ #
 model = openmc.Model(geometry, materials, settings, tallies)
+model.export_to_xml('model__xml_files')
 
 # ------------------ Run Simulation ------------------ #
-model.run(geometry_debug=True)
+model.run(geometry_debug=False)

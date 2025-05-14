@@ -1,30 +1,30 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <tallies>
   <filter id="1" type="cell">
-    <bins>11</bins>
+    <bins>2</bins>
   </filter>
   <filter id="2" type="particle">
     <bins>neutron</bins>
   </filter>
   <filter id="3" type="cell">
-    <bins>15</bins>
+    <bins>6</bins>
   </filter>
   <filter id="5" type="cell">
-    <bins>19</bins>
+    <bins>10</bins>
   </filter>
   <tally id="1" name="blanket_left_breeder_cell_tally_1">
     <filters>1 2</filters>
     <nuclides>Li6 Li7</nuclides>
-    <scores>flux heating H3-production</scores>
+    <scores>H3-production</scores>
   </tally>
   <tally id="2" name="blanket_central_breeder_cell_tally_1">
     <filters>3 2</filters>
     <nuclides>Li6 Li7</nuclides>
-    <scores>flux heating H3-production</scores>
+    <scores>H3-production</scores>
   </tally>
   <tally id="3" name="blanket_right_breeder_cell_tally_1">
     <filters>5 2</filters>
     <nuclides>Li6 Li7</nuclides>
-    <scores>flux heating H3-production</scores>
+    <scores>H3-production</scores>
   </tally>
 </tallies>

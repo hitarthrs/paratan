@@ -3,7 +3,7 @@ import pandas as pd
 import openmc
 # import parametric_input as param
 import yaml
-from geometry_lib import *
+from function_libraries.geometry_lib import *
 
 def hollow_mesh_from_domain(domain, dimensions= [10, 10, 10], phi_grid_bounds=(0.0, 2 * np.pi)):
     """

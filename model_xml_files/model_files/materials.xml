@@ -321,8 +321,8 @@
     <nuclide name="C12" wo="0.0009880068450856866"/>
     <nuclide name="C13" wo="1.1993154914313475e-05"/>
     <nuclide name="O16" wo="0.5277032118315804"/>
-    <nuclide name="O17" wo="0.00021306315463299504"/>
-    <nuclide name="O18" wo="0.0011907250137865987"/>
+    <nuclide name="O17" wo="0.0002130631546329951"/>
+    <nuclide name="O18" wo="0.001190725013786599"/>
     <nuclide name="Na23" wo="0.016"/>
     <nuclide name="Mg24" wo="0.00155819283398886"/>
     <nuclide name="Mg25" wo="0.00020600829761596463"/>

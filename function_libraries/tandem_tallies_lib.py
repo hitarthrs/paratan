@@ -1,5 +1,5 @@
 import openmc
-from tallies_lib import hollow_mesh_from_domain, strings_to_openmc_filters
+from function_libraries.tallies_lib import hollow_mesh_from_domain, strings_to_openmc_filters
 
 class TallyBuilder:
     """
