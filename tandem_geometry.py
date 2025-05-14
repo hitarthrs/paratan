@@ -45,8 +45,8 @@ def parse_machine_input(input_data, material_ns):
         "right_fw": ep_fw_layers,  # reuse
         "param_dict": {
             "central": (cc_vv["outer_axial_length"], cc_vv["central_axis_length"], sep/10, sep/10, 0.0),
-            "left": (ep_vv["outer_axial_length"], ep_vv["central_axis_length"], end_axial, 9*sep/10, left_midplane),
-            "right": (ep_vv["outer_axial_length"], ep_vv["central_axis_length"], 9*sep/10, end_axial, right_midplane),
+            "left": (ep_vv["outer_axial_length"], ep_vv["central_axis_length"], end_axial, 9 * sep/10, left_midplane),
+            "right": (ep_vv["outer_axial_length"], ep_vv["central_axis_length"], 9 * sep/10, end_axial, right_midplane),
         },
         "base_radii": {
             "central": cc_vv["central_radius"],
@@ -177,14 +177,14 @@ class TandemVacuumVessel:
         )
         left_midplane = -right_midplane
 
-        self._z_extents["central"] = (-central_cell_vv_outer_length/2, central_cell_vv_outer_length/2)
+        self._z_extents["central"] = (-self.central_cell_end_plug_separation_distance/10 -central_cell_vv_central_axis_length/2, central_cell_vv_central_axis_length/2 + self.central_cell_end_plug_separation_distance/10)
         self._z_extents["right"] = (
-            right_midplane - end_plug_vv_outer_length/2,
-            right_midplane + end_plug_vv_outer_length/2
+            right_midplane - end_plug_vv_central_axis_length/2 - 0.9 * self.central_cell_end_plug_separation_distance,
+            right_midplane + end_plug_vv_central_axis_length/2 + self.end_axial_distance
         )
         self._z_extents["left"] = (
-            left_midplane - end_plug_vv_outer_length/2,
-            left_midplane + end_plug_vv_outer_length/2
+            left_midplane - end_plug_vv_central_axis_length/2 -  self.end_axial_distance,
+            left_midplane + end_plug_vv_central_axis_length/2 + 0.9 * self.central_cell_end_plug_separation_distance
         )
 
         self._regions["central"], self._components["central"]  = redefined_vacuum_vessel_region(
@@ -222,8 +222,10 @@ class TandemVacuumVessel:
         self._region_list.append(self._regions["left"])
         self._region_list.append(self._regions["right"])
 
+        cell_id = {"left": 1500, "central": 1501, "right": 1502}
+        
         self._cells = {
-            key: openmc.Cell(name=f"{key}_vv_cell", region=region, fill=self.vacuum_material)
+            key: openmc.Cell(cell_id[key],name=f"{key}_vv_cell", region=region, fill=self.vacuum_material)
             for key, region in self._regions.items()
         }
 
@@ -273,6 +275,13 @@ class TandemFWStructure:
             # print(f"For {[key]} section the left legnth is {left_len}")
             # print(f"For {[key]} section the right legnth is {right_len}")
             
+            if key == "left":
+                k = 1
+            elif key == "right":
+                k = 2
+            else:
+                k = 3
+            
             base_region = region_dict[key]
             base_r = base_radii[key]
             bott_r = bottleneck_radii[key]
@@ -302,7 +311,7 @@ class TandemFWStructure:
                 )
                 shell = new_region & ~regions[i - 1]
                 self._region_list.append(shell)
-                cell = openmc.Cell(region=shell, fill=materials[i-1])
+                cell = openmc.Cell(1000 + k*100 + i,region=shell, fill=materials[i-1])
                 cells.append(cell)
                 add_cell_callback(cell)
                 regions.append(new_region)
@@ -624,7 +633,7 @@ class HFCoilBuilder:
                     "mesh_tallies": self.coil_data.get(key, {}).get("tallies", {}).get("mesh_tallies", [])
                 })
 
-                for j, region in enumerate(casing_regions[1:]):
+                for j, region in enumerate(casing_regions[1:-1]):
                     casing_cell = openmc.Cell(
                         cell_id=6500 + i * 10 + j,
                         region=region,
@@ -729,6 +738,7 @@ class EndCellBuilder:
             )
 
             shell_region &= ~vacuum_exclusion_region_dict[key]
+            inner_region &= ~vacuum_exclusion_region_dict[key]
 
             shell_cell = openmc.Cell(
                 cell_id=5001 if key == "left" else 5003,
@@ -766,7 +776,7 @@ class EndCellBuilder:
 
 class TandemMachineBuilder:
     """
-    Assembles vacuum vessel, first wall, and central cylinder structures into a complete tandem mirror model.
+    Assembles vacuum vessel, first wall, central cylinder structures, magnet coils, and end cells into a complete tandem mirror model.
     """
 
     def __init__(self, vv_params, fw_params, central_cyl_params, lf_coil_params, hf_coil_params, end_cell_params, material_ns):
@@ -827,8 +837,10 @@ class TandemMachineBuilder:
 
 
         # ----- 3. Central Cylinders -----
+        
+        combined_fw_regions = self._regions["fw"]["left"][-1] | self._regions["fw"]["central"][-1] | self._regions["fw"]["right"][-1]
         base_regions = {
-            key: self._regions["fw"][key][-1]
+            key: combined_fw_regions
             for key in ["left", "central", "right"]
         }
 
@@ -862,7 +874,7 @@ class TandemMachineBuilder:
         
         ccyl_descriptors = self.ccyl_builder.get_tally_descriptors()
         
-        print(ccyl_descriptors)
+        # print(ccyl_descriptors)
         
         self.tally_builder.add_descriptors(ccyl_descriptors)
 
@@ -931,7 +943,8 @@ class TandemMachineBuilder:
         }
 
         hf_center_z0_dict = self.hf_coil_builder.outermost_coil_z0()
-        vacuum_outermost_regions_dict = {key: self.fw_builder.get_regions_by_region()[key][-1] for key in ["left", "right"]}
+        
+        vacuum_outermost_regions_dict = {key: self.fw_builder.get_regions_by_region()[key][-1] | self.fw_builder.get_regions_by_region()[key][-2] | self.fw_builder.get_regions_by_region()["central"][-1] for key in ["left", "right"]}
 
         self.end_cell_builder.build(
             hf_center_z0_dict=hf_center_z0_dict,
@@ -943,23 +956,24 @@ class TandemMachineBuilder:
 
         self._regions["end_cell"] = self.end_cell_builder.get_regions_by_side()
 
-    # ------ Add outside room ----------
+    #------ Add outside room ----------
         
-    ################# Defining the room inside which the machine exists #####################
+    ################ Defining the room inside which the machine exists #####################
     
 
-        z_min = self.end_cell_builder.get_outer_limits()["left"]
-        z_max = self.end_cell_builder.get_outer_limits()["right"]
+        # z_min = self.end_cell_builder.get_outer_limits()["left"]
+        # z_max = self.end_cell_builder.get_outer_limits()["right"]
         bounding_surface = openmc.model.RectangularParallelepiped(xmin=-450, xmax=450, ymin=-450, ymax=450, zmin=-2000, zmax=2000, boundary_type = 'vacuum')
         room_region = -bounding_surface
 
-        machine_compononet_region_list = self.vv_builder.get_full_region_list() + self.fw_builder.get_full_region_list() + self.ccyl_builder.get_full_region_list() + self.lf_coil_builder.get_full_region_list() + self.hf_coil_builder.get_full_region_list() + self.end_cell_builder.get_full_region_list()
-
-        for i in range(len(machine_compononet_region_list)):
-            room_region &= ~machine_compononet_region_list[i]
+        machine_compononet_region_list =  [] + self.vv_builder.get_full_region_list() + self.fw_builder.get_full_region_list()  + self.ccyl_builder.get_full_region_list() + self.lf_coil_builder.get_full_region_list() + self.hf_coil_builder.get_full_region_list()  + self.end_cell_builder.get_full_region_list()
 
         room_cell = openmc.Cell(name="Room", region=room_region, fill=getattr(self.material_ns, "air"))
         self._add_cell(room_cell)
+        
+        for region in machine_compononet_region_list:
+            room_region &= ~region
+
 
     # ---------- Accessors ----------
     def get_universe(self):

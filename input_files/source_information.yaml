@@ -4,7 +4,7 @@ source:
 
   # Uniform source settings (only used if type is "Uniform")
   uniform:
-    length: 100  # Length of the source region (cm)
+    length: 250  # Length of the source region (cm)
     radius: 50   # Radius of the source region (cm)
 
   # 1D Varying source settings (only used if type is "1D_Varying")
@@ -18,8 +18,8 @@ source:
 
 
 settings:
-  batches: 34
-  particles_per_batch: 32
+  batches: 5
+  particles_per_batch: 50000
   weight_windows: True
   statepoint_frequency: 3
   photon_transport: True

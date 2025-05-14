@@ -459,7 +459,7 @@ def hollow_mesh_from_domain(region, dimensions= [10, 10, 10], phi_grid_bounds=(0
     return cyl_mesh
 
 def redefined_vacuum_vessel_region(outer_axial_length, central_axial_length, central_radius, bottleneck_radius, left_bottleneck_length, right_bottleneck_length, axial_midplane = 0.0):
-
+    
     """
     Generates an OpenMC region representing a typical vacuum vessel shape for tandem mirror devices.
 
@@ -511,7 +511,7 @@ def redefined_vacuum_vessel_region(outer_axial_length, central_axial_length, cen
     first_plane_distance = outer_axial_length / 2.0
     second_plane_distance = central_axial_length / 2.0
     
-    angle = np.arctan((central_radius - bottleneck_radius)/(central_axial_length - outer_axial_length))
+    angle = np.arctan(2*(central_radius - bottleneck_radius)/(central_axial_length - outer_axial_length))
 
     first_plane_distance = outer_axial_length/2
     second_plane_distance = central_axial_length/2
@@ -540,11 +540,11 @@ def redefined_vacuum_vessel_region(outer_axial_length, central_axial_length, cen
     left_cone = openmc.model.ZConeOneSided(x0=0.0, y0=0.0, z0= axial_midplane - (central_radius/np.tan(angle)+first_plane_distance), r2=(np.tan(angle))**2)
     right_cone = openmc.model.ZConeOneSided(x0=0.0, y0=0.0, z0=axial_midplane + (central_radius/np.tan(angle)+first_plane_distance), r2=(np.tan(angle))**2, up=False)
     
-    left_cone_region = -left_cone & -central_cylinder_left_plane
-    right_cone_region = -right_cone & +central_cylinder_right_plane
+    left_cone_region = -left_cone & -central_cylinder_left_plane & +left_outer_cylinder_1
+    right_cone_region = -right_cone & +central_cylinder_right_plane & -right_outer_cylinder_2
     
     # --- Full vessel region ---
-    vessel_region = left_cone_region | right_cone_region | outer_cylinders_region | central_cylinder
+    vessel_region =  left_cone_region | right_cone_region | outer_cylinders_region | central_cylinder
 
     # --- Z Planes ---
 
@@ -574,3 +574,4 @@ def redefined_vacuum_vessel_region(outer_axial_length, central_axial_length, cen
     }
     
     return vessel_region, components
+
