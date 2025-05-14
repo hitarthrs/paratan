@@ -993,3 +993,172 @@ class TandemMachineBuilder:
     
     def get_nwl(self):
         return 
+
+
+class NewTandemMachineBuilder:
+    """
+    Modular builder for tandem mirror fusion machines.
+    Components: VV, FW, Cylinders, LF/HF coils, End cells, Room, Tallies.
+    """
+
+    def __init__(self, vv_params, fw_params, central_cyl_params, lf_coil_params, hf_coil_params, end_cell_params, material_ns):
+        self.vv_params = vv_params
+        self.fw_params = fw_params
+        self.central_cyl_params = central_cyl_params
+        self.lf_coil_params = lf_coil_params
+        self.hf_coil_params = hf_coil_params
+        self.end_cell_params = end_cell_params
+        self.material_ns = material_ns
+
+        self._bounding_surface = openmc.model.RectangularParallelepiped(
+            xmin=-450, xmax=450, ymin=-450, ymax=450,
+            zmin=-2000, zmax=2000, boundary_type='vacuum'
+        )
+        self._room_region = -self._bounding_surface  # Start with full volume
+
+        self.vv_builder = None
+        self.fw_builder = None
+        self.ccyl_builder = None
+        self.lf_coil_builder = None
+        self.hf_coil_builder = None
+        self.end_cell_builder = None
+        self.tally_builder = TallyBuilder()
+
+        self._universe = openmc.Universe(name="TandemMachine")
+        self._all_cells = []
+        self._z_extents = {}
+        self._regions = {"vv": {}, "fw": {}, "cyl": {}, "lf_coils": {}, "hf_coils": {}, "end_cell": {}}
+
+        room_cell = openmc.Cell(69, name="Room", region=self._room_region, fill=getattr(self.material_ns, "air"))
+        self._universe.add_cell(room_cell)
+
+    def _add_cell(self, cell):
+        self._universe.add_cell(cell)
+        self._all_cells.append(cell)
+
+    def subtract_from_room(self, regions):
+        for region in regions:
+            self._room_region &= ~region
+
+    def build_vacuum_vessel(self):
+        self.vv_builder = TandemVacuumVessel(**self.vv_params)
+        vv_cells = self.vv_builder.build_cells()
+        for cell in vv_cells.values():
+            self._add_cell(cell)
+        self._regions["vv"] = self.vv_builder.get_regions()
+        self._z_extents["vv"] = self.vv_builder.get_z_extents()
+        self.subtract_from_room(self.vv_builder.get_full_region_list())
+
+    def build_first_wall(self):
+        self.fw_builder = TandemFWStructure(
+            self.fw_params["left_fw"], self.fw_params["central_fw"], self.fw_params.get("right_fw", None)
+        )
+        self.fw_builder.build_all_sections(
+            region_dict=self._regions["vv"],
+            param_dict=self.fw_params["param_dict"],
+            mat_ns=self.material_ns,
+            base_radii=self.fw_params["base_radii"],
+            bottleneck_radii=self.fw_params["bottleneck_radii"],
+            add_cell_callback=self._add_cell
+        )
+        self._regions["fw"] = self.fw_builder.get_regions_by_region()
+        self._z_extents["fw"] = self.fw_builder.get_z_extents()
+        self.subtract_from_room(self.fw_builder.get_full_region_list())
+
+    def build_central_cylinders(self):
+        combined_fw = self._regions["fw"]["left"][-1] | self._regions["fw"]["central"][-1] | self._regions["fw"]["right"][-1]
+        base_regions = {key: combined_fw for key in ["left", "central", "right"]}
+        base_radii = {
+            key: self.fw_params["base_radii"][key] + sum(layer["thickness"] for layer in layers)
+            for key, layers in zip(["left", "central", "right"],
+                                   [self.fw_params["left_fw"], self.fw_params["central_fw"],
+                                    self.fw_params.get("right_fw", self.fw_params["left_fw"])])
+        }
+        self.ccyl_builder = TandemCentralCylinders(
+            self.central_cyl_params["left"],
+            self.central_cyl_params["central"],
+            self.central_cyl_params.get("right", None),
+            self.central_cyl_params.get("tallies", None)
+        )
+        self.ccyl_builder.build_all_sections(
+            base_radii=base_radii,
+            midplanes=self.central_cyl_params["midplanes"],
+            axial_lengths=self.central_cyl_params["axial_lengths"],
+            base_regions=base_regions,
+            mat_ns=self.material_ns,
+            add_cell_callback=self._add_cell
+        )
+        self._regions["cyl"] = self.ccyl_builder.get_regions_by_region()
+        self._z_extents["cyl"] = self.ccyl_builder.get_z_extents()
+        self.tally_builder.add_descriptors(self.ccyl_builder.get_tally_descriptors())
+        self.subtract_from_room(self.ccyl_builder.get_full_region_list())
+
+    def build_lf_coils(self):
+        self.lf_coil_builder = LFCoilBuilder(self.lf_coil_params)
+        outer_radii = {key: self.ccyl_builder.get_radii_by_region()[key][-1] for key in ["left", "central", "right"]}
+        self.lf_coil_builder.build_all_sections(
+            outer_radii_by_region=outer_radii,
+            midplanes=self.central_cyl_params["midplanes"],
+            mat_ns=self.material_ns,
+            add_cell_callback=self._add_cell
+        )
+        self._regions["lf_coils"] = self.lf_coil_builder.get_regions_by_region()
+        self.tally_builder.add_descriptors(self.lf_coil_builder.get_tally_descriptors())
+        self.subtract_from_room(self.lf_coil_builder.get_full_region_list())
+
+    def build_hf_coils(self):
+        self.hf_coil_builder = HFCoilBuilder(self.hf_coil_params)
+        bottleneck_radii = {
+            "left": self.fw_builder.fw_radii()["left"][-1],
+            "right": self.fw_builder.fw_radii()["right"][-1]
+        }
+        cc_half_lengths = {key: self.central_cyl_params["axial_lengths"][key] / 2 for key in ["left", "right"]}
+        self.hf_coil_builder.build_all_sections(
+            bottleneck_radii=bottleneck_radii,
+            cc_half_lengths=cc_half_lengths,
+            midplanes=self.central_cyl_params["midplanes"],
+            mat_ns=self.material_ns,
+            add_cell_callback=self._add_cell
+        )
+        self._regions["hf_coils"] = self.hf_coil_builder.get_regions_by_region()
+        self.tally_builder.add_descriptors(self.hf_coil_builder.get_tally_descriptors())
+        self.subtract_from_room(self.hf_coil_builder.get_full_region_list())
+
+    def build_end_cells(self):
+        self.end_cell_builder = EndCellBuilder(self.end_cell_params)
+        hf_coils_params_dict = {
+            key: {
+                "magnet": self.hf_coil_params[key]["magnet"],
+                "shield": self.hf_coil_params[key]["shield"],
+                "casing_layers": self.hf_coil_params[key]["casing_layers"]
+            } for key in ["left", "right"]
+        }
+        hf_center_z0_dict = self.hf_coil_builder.outermost_coil_z0()
+        vacuum_outermost_regions_dict = {
+            key: self._regions["fw"][key][-1] | self._regions["fw"][key][-2] | self._regions["fw"]["central"][-1]
+            for key in ["left", "right"]
+        }
+        self.end_cell_builder.build(
+            hf_center_z0_dict=hf_center_z0_dict,
+            hf_coil_params_dict=hf_coils_params_dict,
+            vacuum_exclusion_region_dict=vacuum_outermost_regions_dict,
+            mat_ns=self.material_ns,
+            add_cell_callback=self._add_cell
+        )
+        self._regions["end_cell"] = self.end_cell_builder.get_regions_by_side()
+        self.subtract_from_room(self.end_cell_builder.get_full_region_list())
+
+    def get_universe(self):
+        return self._universe
+
+    def get_all_cells(self):
+        return self._all_cells
+
+    def get_all_regions(self):
+        return self._regions
+
+    def get_z_extents(self):
+        return self._z_extents
+
+    def get_all_tallies(self):
+        return self.tally_builder.get_tallies()
