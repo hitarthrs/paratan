@@ -15,7 +15,7 @@ with open("input_files/tandem_parametric_input.yaml", "r") as f:
 vv_params, fw_params, cyl_params, lf_coil_params, hf_coil_params, end_cell_params = parse_machine_input(input_data, m)
 
 # ------------------ Build Machine ------------------ #
-builder = NewTandemMachineBuilder(
+builder = TandemMachineBuilder(
     vv_params, fw_params, cyl_params,
     lf_coil_params, hf_coil_params, end_cell_params,
     material_ns=m
