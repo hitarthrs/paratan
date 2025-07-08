@@ -1,0 +1,83 @@
+<?xml version='1.0' encoding='utf-8'?>
+<model>
+  <materials>
+    <material id="31" name="tungsten">
+      <density units="g/cm3" value="19.25"/>
+      <nuclide ao="0.12" name="W180"/>
+      <nuclide ao="26.5" name="W182"/>
+      <nuclide ao="14.31" name="W183"/>
+      <nuclide ao="30.64" name="W184"/>
+      <nuclide ao="28.43" name="W186"/>
+    </material>
+  </materials>
+  <geometry>
+    <cell id="50" material="void" region="56 -10 -123" universe="2"/>
+    <cell id="51" material="void" region="-55 13 -123" universe="2"/>
+    <cell id="101" material="void" region="-2012 10 -11" universe="2"/>
+    <cell id="102" material="void" region="-2014 16 -7 11" universe="2"/>
+    <cell id="103" material="void" region="-2010 -8 7" universe="2"/>
+    <cell id="104" material="void" region="-2018 -18 8 -12" universe="2"/>
+    <cell id="105" material="void" region="-2012 12 -13" universe="2"/>
+    <cell id="201" material="void" region="2012 -59 10 -11" universe="2"/>
+    <cell id="202" material="void" region="(2014 | -16) (-19 20) -7 11" universe="2"/>
+    <cell id="203" material="void" region="2010 -58 -8 7" universe="2"/>
+    <cell id="204" material="void" region="(2018 | 18) (-21 -22) 8 -12" universe="2"/>
+    <cell id="205" material="void" region="2012 -59 12 -13" universe="2"/>
+    <cell id="301" material="void" region="59 -123 10 -11" universe="2"/>
+    <cell id="302" material="void" region="(19 | -20) -123 -7 11" universe="2"/>
+    <cell id="303" material="void" region="58 -123 -8 7" universe="2"/>
+    <cell id="304" material="void" region="(21 | 22) -123 8 -12" universe="2"/>
+    <cell id="305" material="void" region="59 -123 12 -13" universe="2"/>
+    <surface coeffs="-250.0" id="7" type="z-plane"/>
+    <surface coeffs="250.0" id="8" type="z-plane"/>
+    <surface coeffs="-330.0" id="10" type="z-plane"/>
+    <surface coeffs="-300.0" id="11" type="z-plane"/>
+    <surface coeffs="300.0" id="12" type="z-plane"/>
+    <surface coeffs="330.0" id="13" type="z-plane"/>
+    <surface coeffs="-346.875" id="16" type="z-plane"/>
+    <surface coeffs="346.875" id="18" type="z-plane"/>
+    <surface coeffs="0.0 0.0 -347.1875 0.4096" id="19" type="z-cone"/>
+    <surface coeffs="-347.1875" id="20" type="z-plane"/>
+    <surface coeffs="0.0 0.0 347.1875 0.4096" id="21" type="z-cone"/>
+    <surface coeffs="347.1875" id="22" type="z-plane"/>
+    <surface boundary="vacuum" coeffs="340.0" id="55" type="z-plane"/>
+    <surface boundary="vacuum" coeffs="-340.0" id="56" type="z-plane"/>
+    <surface coeffs="0.0 0.0 62.2" id="58" type="z-cylinder"/>
+    <surface coeffs="0.0 0.0 30.2" id="59" type="z-cylinder"/>
+    <surface boundary="vacuum" coeffs="0.0 0.0 87" id="123" type="z-cylinder"/>
+    <surface coeffs="0.0 0.0 62" id="2010" type="z-cylinder"/>
+    <surface coeffs="0.0 0.0 30" id="2012" type="z-cylinder"/>
+    <surface coeffs="0.0 0.0 -346.875 0.4096" id="2014" type="z-cone"/>
+    <surface coeffs="0.0 0.0 346.875 0.4096" id="2018" type="z-cone"/>
+  </geometry>
+  <settings>
+    <run_mode>fixed source</run_mode>
+    <particles>100000</particles>
+    <batches>10</batches>
+    <source particle="neutron" strength="1.0" type="independent">
+      <space origin="0.0 0.0 0.0" type="cylindrical">
+        <r type="discrete">
+          <parameters>0.0 1.0</parameters>
+        </r>
+        <phi parameters="0.0 6.283185307179586" type="uniform"/>
+        <z parameters="-230 100" type="uniform"/>
+      </space>
+      <energy type="discrete">
+        <parameters>14100000.0 1.0</parameters>
+      </energy>
+    </source>
+    <surf_source_write>
+      <surface_ids>2012 2014 2018 2010</surface_ids>
+      <max_particles>1000000</max_particles>
+    </surf_source_write>
+  </settings>
+  <tallies>
+    <filter id="1" type="cell">
+      <bins>102 103 104</bins>
+    </filter>
+    <tally id="14">
+      <filters>1</filters>
+      <scores>flux</scores>
+    </tally>
+  </tallies>
+</model>
