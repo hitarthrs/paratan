@@ -24,6 +24,61 @@ The -v flag mounts the project directory into the container so that changes you 
 
 The -it flag runs the container in interactive mode with a terminal.
 
+# 🖥️ Running Simulations with CLI
+
+Paratan provides a command-line interface (CLI) for running neutronics simulations. The CLI supports two modes: **simple** and **tandem**.
+
+## Basic Usage
+
+```bash
+python cli.py --mode <mode> --input <input_file> --output-dir <output_directory>
+```
+
+### Parameters:
+- `--mode`: Choose between "simple" or "tandem" simulation modes
+- `--input`: Path to the YAML input file
+- `--output-dir`: Directory to write output files (default: "output")
+
+## Available Modes
+
+### Simple Mode
+```bash
+python cli.py --mode simple --input input_files/simple_parametric_input.yaml --output-dir simple_output
+```
+- **Purpose**: Basic mirror fusion device simulation
+- **Input**: Uses `simple_parametric_input.yaml` for configuration
+- **Status**: Currently under development (prints "Luls" as placeholder)
+
+### Tandem Mode
+```bash
+python cli.py --mode tandem --input input_files/tandem_parametric_input.yaml --output-dir tandem_output
+```
+- **Purpose**: ATandem mirror fusion device simulation
+- **Input**: Uses `tandem_parametric_input.yaml` for configuration
+- **Features**: Full geometry construction, material assignment, and source specification
+
+## Input Files
+
+The simulation configuration is defined in YAML files located in the `input_files/` directory:
+
+- `simple_parametric_input.yaml`: Configuration for simple mirror simulations
+- `tandem_parametric_input.yaml`: Configuration for tandem mirror simulations  
+- `source_information.yaml`: Source configuration for neutron generation
+
+## Example Usage
+
+1. **Run a tandem simulation:**
+   ```bash
+   python cli.py --mode tandem --input input_files/tandem_parametric_input.yaml --output-dir my_tandem_run
+   ```
+
+2. **Run a simple simulation:**
+   ```bash
+   python cli.py --mode simple --input input_files/simple_parametric_input.yaml --output-dir my_simple_run
+   ```
+
+The simulation will create output files in the specified output directory, including OpenMC statepoint files and other results.
+
 # Model Setup
 
 The input files are written in YAML format for easy readability, structured organization, and seamless parsing within the codebase.

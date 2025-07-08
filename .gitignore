@@ -1,5 +1,64 @@
+# Study directories
+tbr_runs/
+tbr_runs_lithium/
+tbr_runs_lithium_15/
+tbr_runs_powerlaw/
+shielding_study_simple/
 
+# Data files
+center_tbr_data_lithium_15.csv
+center_tbr_data_lithium.csv
+center_tbr_data_powerlaw.csv
+center_tbr_data.csv
+
+# Analysis files
+analyze_statepoint.py
+
+# Plot and image files
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.pdf
+*.eps
+*.ps
+
+# Example directories
 hitarthNWLexample/
 
 model__xml_files/
 /model_xml_files/
+
+# completed runs text files
+completed_tbr_runs.txt
+completed_tbr_runs_lithium.txt
+completed_tbr_runs_lithium_15.txt
+completed_tbr_runs_powerlaw.txt
+contour_tbr.py
+
+statepoint.*
+
+run_*
+
+openmc/
+
+shielding_study_dirs.sh
+
+summarize_tbr_tallies.py
+
+reoorgainze.sh
+
+plot_*
+
+extract_tbr_to_csv.py
+
+biot-savart/
+
+mv_source.py
+
+run.py
+
+
+
+
