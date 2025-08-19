@@ -35,7 +35,7 @@ python cli.py --mode <mode> --input <input_file> --output-dir <output_directory>
 ```
 
 ### Parameters:
-- `--mode`: Choose between "simple" or "tandem" simulation modes
+- `--mode`: Choose between "simple", "tandem", or "build-only" simulation modes
 - `--input`: Path to the YAML input file
 - `--output-dir`: Directory to write output files (default: "output")
 
@@ -45,9 +45,10 @@ python cli.py --mode <mode> --input <input_file> --output-dir <output_directory>
 ```bash
 python cli.py --mode simple --input input_files/simple_parametric_input.yaml --output-dir simple_output
 ```
-- **Purpose**: Basic mirror fusion device simulation
+- **Purpose**: Simple mirror fusion device simulation with full geometry construction
 - **Input**: Uses `simple_parametric_input.yaml` for configuration
-- **Status**: Currently under development (prints "Luls" as placeholder)
+- **Features**: Vacuum vessel, central cell, LF/HF coils, end cells with configurable materials and dimensions
+- **Status**: Fully functional - builds complete OpenMC models and runs simulations
 
 ### Tandem Mode
 ```bash
@@ -56,6 +57,14 @@ python cli.py --mode tandem --input input_files/tandem_parametric_input.yaml --o
 - **Purpose**: ATandem mirror fusion device simulation
 - **Input**: Uses `tandem_parametric_input.yaml` for configuration
 - **Features**: Full geometry construction, material assignment, and source specification
+
+### Build-Only Mode
+```bash
+python cli.py --mode build-only --input input_files/simple_parametric_input.yaml --output-dir model_output
+```
+- **Purpose**: Generate OpenMC XML files without running the simulation
+- **Use case**: Model validation, geometry inspection, or preparation for manual OpenMC runs
+- **Output**: Complete set of OpenMC input files (geometry.xml, materials.xml, tallies.xml, settings.xml)
 
 ## Input Files
 
@@ -77,7 +86,12 @@ The simulation configuration is defined in YAML files located in the `input_file
    python cli.py --mode simple --input input_files/simple_parametric_input.yaml --output-dir my_simple_run
    ```
 
-The simulation will create output files in the specified output directory, including OpenMC statepoint files and other results.
+3. **Build model files only:**
+   ```bash
+   python cli.py --mode build-only --input input_files/simple_parametric_input.yaml --output-dir model_files
+   ```
+
+The simulation will create output files in the specified output directory, including OpenMC statepoint files and other results. The build-only mode generates the complete set of OpenMC input files without running the simulation.
 
 # Model Setup
 
@@ -87,7 +101,9 @@ The input files are written in YAML format for easy readability, structured orga
 
 The source input file defines how neutrons are introduced into the system. It supports multiple source types and simulation settings:
 
-### Source Types (choose one via the type key):
+### Source Types
+
+**Volumetric (Default)** – Automatically approximates the vacuum vessel shape using a series of cylinders with relative strengths set according to the vessel geometry. This is the recommended source type for most fusion device simulations.
 
 **Uniform** – A constant neutron generation rate within a cylindrical region. Requires:
 
