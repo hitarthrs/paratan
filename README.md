@@ -62,7 +62,7 @@ python cli.py --mode tandem --input input_files/tandem_parametric_input.yaml --o
 ```bash
 python cli.py --mode build-only --input input_files/simple_parametric_input.yaml --output-dir model_output
 ```
-- **Purpose**: Generate OpenMC XML files without running the simulation
+- **Purpose**: Generate OpenMC XML files and model plot without running the simulation (Works for simple mirrors right now, tandem mode to be added)
 - **Use case**: Model validation, geometry inspection, or preparation for manual OpenMC runs
 - **Output**: Complete set of OpenMC input files (geometry.xml, materials.xml, tallies.xml, settings.xml)
 
