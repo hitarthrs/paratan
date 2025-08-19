@@ -20,13 +20,33 @@ def hollow_mesh_from_domain(domain, dimensions= [10, 10, 10], phi_grid_bounds=(0
     # Get the bounding box of the region
     bounding_box = domain.bounding_box
     
-    # Determine max radial extent from bounding box corners
-    max_radius = max(
-        bounding_box[0][0],  # x-min
-        bounding_box[0][1],  # y-min
-        bounding_box[1][0],  # x-max
-        bounding_box[1][1]   # y-max
-    )
+    # For cylindrical geometry, calculate max radius from the actual domain
+    # Extract all surfaces in the domain
+    if type(domain) == openmc.Cell:
+        region = domain.region
+    elif type(domain) == openmc.Region:
+        region = domain
+    
+    surfaces = region.get_surfaces()
+    
+    # Find all z-cylindrical surfaces and collect their radii
+    radii = [
+        surface.coefficients['r']
+        for surface in surfaces.values()
+        if surface.type == 'z-cylinder'
+    ]
+    
+    # Set max radius based on largest detected cylindrical surface
+    if radii:
+        max_radius = max(radii)
+    else:
+        # Fallback to bounding box if no cylinders found
+        max_radius = max(
+            abs(bounding_box[0][0]),  # |x-min|
+            abs(bounding_box[0][1]),  # |y-min|
+            abs(bounding_box[1][0]),  # |x-max|
+            abs(bounding_box[1][1])   # |y-max|
+        )
     
     # Create outer bounding cylindrical surfaces
     outer_cylinder = openmc.ZCylinder(r=max_radius)
@@ -35,11 +55,7 @@ def hollow_mesh_from_domain(domain, dimensions= [10, 10, 10], phi_grid_bounds=(0
     
     outer_region = -outer_cylinder & +lower_z & -upper_z
 
-    # Check if the type of domain is an openmc.Cell
-    if type(domain) == openmc.Cell:
-        region = domain.region
-    elif type(domain) == openmc.Region:
-        region = domain
+
     
     # Subtract the original region to define hollow space
     hollow_region = outer_region & ~region
@@ -87,7 +103,8 @@ def strings_to_openmc_filters(filter_strings: list[str]):
             filters.append(openmc.ParticleFilter("neutron"))
 
         elif filter_string == "fast_energies_filter":
-            edges = np.logspace(np.log10(1e5), np.log10(20e6), 501)  # eV
+            # edges = np.logspace(np.log10(1e5), np.log10(20e6), 501)  # eV
+            edges = np.array([1e5, 20e6])
             filters.append(openmc.EnergyFilter(edges))
 
         elif filter_string == "thermal_energies_filter":

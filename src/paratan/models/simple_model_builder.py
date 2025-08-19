@@ -1,766 +1,914 @@
 import openmc
 import numpy as np
-import openmc.lib
 import matplotlib.pyplot as plt
+from src.paratan.materials import material as m
 from src.paratan.geometry.core import *
+from src.paratan.source.core import *
+from src.paratan.tallies.base_tallies import hollow_mesh_from_domain, strings_to_openmc_filters
 from src.paratan.tallies.tandem_tallies import TallyBuilder
-from pathlib import Path
-import src.paratan.materials.material as m
 import yaml
-
+import os
+import contextlib
 from types import SimpleNamespace
 
-def parse_simple_machine_input(input_data):
-    """
-    Parse structured input for simple mirror model.
 
-    Parameters
-    ----------
-    input_data : dict
-        User-provided YAML input.
-
-    Returns
-    -------
-    Tuple of structured parameter dictionaries.
+def parse_simple_machine_input(input_data, material_ns):
     """
-    # --------- 1. Vacuum Vessel Parameters ---------
+    Parse input data for simple mirror machine and return structured parameters.
+    """
+    # Vacuum vessel parameters
     vv_info = input_data["vacuum_vessel"]
-
     vv_params = {
-        "machine_length_from_midplane": vv_info["machine_length_from_midplane"],
-        "first_vv_plane_from_midplane": vv_info["first_vv_plane_from_midplane"],
-        "vacuum_chamber": vv_info["vacuum_chamber"],
-        "bottleneck_cylinder": vv_info["bottleneck_cylinder"],
-        "cone_angle": vv_info["cone_angle"],
-        "structure": vv_info["structure"]
+        "outer_axial_length": vv_info["outer_axial_length"],
+        "central_axial_length": vv_info["central_axial_length"],
+        "central_radius": vv_info["central_radius"],
+        "bottleneck_radius": vv_info["bottleneck_radius"],
+        "left_bottleneck_length": vv_info["left_bottleneck_length"],
+        "right_bottleneck_length": vv_info["right_bottleneck_length"],
+        "axial_midplane": vv_info.get("axial_midplane", 0.0),
+        "structure": vv_info.get("structure", {}),
+        "vacuum_material": getattr(material_ns, "vacuum")
     }
 
-    # --------- 2. Central Cell Parameters ---------
+    # Central cell parameters
     cc_info = input_data["central_cell"]
-
-    central_cell_params = {
+    cc_params = {
         "axial_length": cc_info["axial_length"],
-        "layers": cc_info["layers"]
+        "layers": cc_info["layers"],
+        "materials": [getattr(material_ns, layer["material"]) for layer in cc_info["layers"]],
+        "tallies": cc_info.get("tallies", {})  # Updated to use nested tallies
     }
 
-    # --------- 3. LF Coil Parameters ---------
+    # LF coil parameters
     lf_info = input_data["lf_coil"]
-    lf_tallies = input_data.get("lf_coil_tallies", {})
-
-    lf_coil_params = {
+    lf_params = {
         "shell_thicknesses": lf_info["shell_thicknesses"],
         "inner_dimensions": lf_info["inner_dimensions"],
         "positions": lf_info["positions"],
-        "materials": lf_info["materials"],
-        "tallies": lf_tallies
+        "materials": {
+            "shield": getattr(material_ns, lf_info["materials"]["shield"]),
+            "magnet": getattr(material_ns, lf_info["materials"]["magnet"])
+        },
+        "tallies": lf_info.get("lf_coil_tallies", {})  # Updated to use nested tallies
     }
 
-    # --------- 4. HF Coil Parameters ---------
+    # HF coil parameters
     hf_info = input_data["hf_coil"]
-
-    hf_coil_params = {
+    hf_params = {
         "magnet": hf_info["magnet"],
         "casing_layers": hf_info["casing_layers"],
+        "casing_materials": [getattr(material_ns, layer["material"]) for layer in hf_info["casing_layers"]],
         "shield": hf_info["shield"],
-        "tallies": hf_info.get("tallies", {})
+        "shield_material": getattr(material_ns, hf_info["shield"]["material"]),
+        "tallies": hf_info.get("hf_coil_tallies", {})  # Updated to use nested tallies
     }
 
-    # --------- 5. End Cell Parameters ---------
-    end_cell_params = input_data.get("end_cell", {})
+    # End cell parameters
+    end_info = input_data.get("end_cell", {})
+    end_params = {
+        "axial_length": end_info.get("axial_length", 50),
+        "shell_thickness": end_info.get("shell_thickness", 2),
+        "diameter": end_info.get("diameter", 100),
+        "shell_material": getattr(material_ns, end_info.get("shell_material", "stainless")),
+        "inner_material": getattr(material_ns, end_info.get("inner_material", "vacuum")),
+        "tallies": end_info.get("end_cell_tallies", {})  # Updated to use nested tallies
+    }
 
-    return vv_params, central_cell_params, lf_coil_params, hf_coil_params, end_cell_params
+    return vv_params, cc_params, lf_params, hf_params, end_params
+
 
 class SimpleVacuumVessel:
-    """
-    Class to construct OpenMC cells and expose regions for a simple mirror vacuum vessel:
-    - Single axisymmetric innermost vacuum region
-    """
-
-    def __init__(self, machine_length_from_midplane, first_vv_plane_from_midplane, cone_angle, vacuum_chamber, bottleneck_cylinder, vacuum_material):
-        self.machine_length_from_midplane = machine_length_from_midplane
-        self.first_vv_plane_from_midplane = first_vv_plane_from_midplane
-        self.cone_angle = cone_angle
-        self.vacuum_chamber_radius = vacuum_chamber["radius"]
-        self.bottleneck_cylinder_radius = bottleneck_cylinder["cylinder_radius"]
-        self.bottleneck_plane_distance = bottleneck_cylinder["plane_distance"]
-        self.vacuum_material = vacuum_material
-
-        self._region = None
-        self._cell = None
-
-    def build_cell(self):
-
-        self._region = vacuum_vessel_region(
-            self.first_vv_plane_from_midplane,
-            self.machine_length_from_midplane,
-            self.vacuum_chamber_radius,
-            self.bottleneck_cylinder_radius,
-            self.cone_angle
-        )
-
-        self._cell = openmc.Cell(1000, region=self._region, fill=self.vacuum_material)
-        return self._cell
-
-    def get_region(self):
-        return self._region
-
-    def get_cell(self):
-        return self._cell
+    """Builds the vacuum vessel structure for simple mirror machine."""
     
-
-class SimpleFWStructure:
-    """
-    Class to construct concentric cylindrical structural layers around the simple vacuum vessel.
-    """
-
-    def __init__(self, structure_layers, vacuum_chamber_radius, bottleneck_cylinder_radius, vacuum_chamber_material, first_plane, machine_half_length, cone_angle):
-        self.structure_layers = structure_layers
-        self.vacuum_chamber_radius = vacuum_chamber_radius
-        self.bottleneck_cylinder_radius = bottleneck_cylinder_radius
-        self.vacuum_chamber_material = vacuum_chamber_material
-        self.first_plane = first_plane
-        self.machine_half_length = machine_half_length
-        self.cone_angle = cone_angle
-
-        self._cells = []
-        self._regions = []
-        self._full_region_list = []
-
-    def build_cells(self, mat_ns, room_region, add_cell_callback):
-
-        structural_thicknesses = [layer.get("thickness") for _, layer in self.structure_layers.items()]
-        structural_materials = [getattr(mat_ns, layer.get("material")) for _, layer in self.structure_layers.items()]
-
-        all_radii = np.cumsum([self.vacuum_chamber_radius] + structural_thicknesses)
-        all_bottlenecks = np.cumsum([self.bottleneck_cylinder_radius] + structural_thicknesses)
-
-        all_materials = [self.vacuum_chamber_material] + structural_materials
-
-        regions = []
-
-        for i in range(len(all_radii)):
-            region = vacuum_vessel_region(
-                self.first_plane,
-                self.machine_half_length,
-                all_radii[i],
-                all_bottlenecks[i],
-                self.cone_angle
+    def __init__(self, vv_params, material_ns):
+        self.vv_params = vv_params
+        self.material_ns = material_ns
+        self.vacuum_section_regions = []
+        self.vacuum_section_cells = []
+        self.room_region = None
+        
+    def build_vacuum_vessel(self, room_region):
+        """Build the vacuum vessel structure using single_vacuum_vessel_region."""
+        self.room_region = room_region
+        
+        # Create main vacuum vessel region using the new function
+        vv_main_region, vv_components = single_vacuum_vessel_region(
+            self.vv_params["outer_axial_length"],
+            self.vv_params["central_axial_length"], 
+            self.vv_params["central_radius"],
+            self.vv_params["bottleneck_radius"],
+            self.vv_params["left_bottleneck_length"],
+            self.vv_params["right_bottleneck_length"],
+            self.vv_params["axial_midplane"]
+        )
+        
+        # Create main vacuum vessel cell
+        vv_main_cell = openmc.Cell(
+            1000, 
+            region=vv_main_region, 
+            fill=self.vv_params["vacuum_material"]
+        )
+        
+        self.vacuum_section_regions.append(vv_main_region)
+        self.vacuum_section_cells.append(vv_main_cell)
+        
+        # Build structural layers as nested composite shapes (following run_simple_mirror_model logic)
+        if "structure" in self.vv_params:
+            structural_thicknesses = [properties.get("thickness") for layer_name, properties in self.vv_params["structure"].items()]
+            structural_materials = [getattr(self.material_ns, properties.get("material")) for layer_name, properties in self.vv_params["structure"].items()]
+            
+            # Calculate cumulative radii for BOTH central and bottleneck sections
+            # This follows the exact logic from run_simple_mirror_model
+            central_radii = np.cumsum([self.vv_params["central_radius"]] + structural_thicknesses)
+            bottleneck_radii = np.cumsum([self.vv_params["bottleneck_radius"]] + structural_thicknesses)
+            
+            # Build structural layers as nested composite shapes
+            for i, (thickness, material) in enumerate(zip(structural_thicknesses, structural_materials)):
+                # Create the full vacuum vessel region at this structural layer's outer radius
+                # Use BOTH updated radii: central_radii[i+1] and bottleneck_radii[i+1]
+                vv_layer_region, _ = single_vacuum_vessel_region(
+                    self.vv_params["outer_axial_length"],
+                    self.vv_params["central_axial_length"], 
+                    central_radii[i + 1],      # Updated central radius
+                    bottleneck_radii[i + 1],    # Updated bottleneck radius
+                    self.vv_params["left_bottleneck_length"],
+                    self.vv_params["right_bottleneck_length"],
+                    self.vv_params["axial_midplane"]
+                )
+                
+                # The structural layer region is the full region minus the previous layer's region
+                # This creates the cylindrical shell that follows the complex vacuum vessel geometry
+                if i == 0:
+                    # First structural layer: full region minus main vacuum vessel region
+                    structural_region = vv_layer_region & ~self.vacuum_section_regions[0]
+                else:
+                    # Subsequent layers: full region minus previous structural layer region
+                    structural_region = vv_layer_region & ~self.vacuum_section_regions[-1]
+                
+                # Create the structural layer cell
+                structural_cell = openmc.Cell(
+                    1000 + i + 1,
+                    region=structural_region,
+                    fill=material
+                )
+                
+                self.vacuum_section_regions.append(vv_layer_region)  # Store the full region
+                self.vacuum_section_cells.append(structural_cell)
+        
+        return self.vacuum_section_cells, self.vacuum_section_regions
+    
+    def get_outermost_radius(self):
+        """Get the outermost radius of the vacuum vessel."""
+        base_radius = self.vv_params["central_radius"]
+        if "structure" in self.vv_params:
+            structural_thickness = sum(
+                [properties.get("thickness", 0) for layer_name, properties in self.vv_params["structure"].items()]
             )
-            regions.append(region)
+            return base_radius + structural_thickness
+        return base_radius
+    def get_outermost_bottleneck_radius(self):
+        """Get the outermost bottleneck radius of the vacuum vessel."""
+        bottleneck_radius = self.vv_params["bottleneck_radius"]
+        if "structure" in self.vv_params:
+            structural_thickness = sum(
+                [properties.get("thickness", 0) for layer_name, properties in self.vv_params["structure"].items()]
+            )
+            return bottleneck_radius + structural_thickness
+        return bottleneck_radius
 
-        self._regions = regions
-
-        for i in range(1, len(regions)):
-            shell = regions[i] & ~regions[i-1]
-            room_region &= ~shell
-            cell = openmc.Cell(1000 + i, region=shell, fill=all_materials[i])
-            self._cells.append(cell)
-            self._full_region_list.append(shell)
-            add_cell_callback(cell)
-
-        return self._cells
-
-    def get_cells(self):
-        return self._cells
-
-    def get_regions(self):
-        return self._regions
-
-    def get_full_region_list(self):
-        return self._full_region_list
 
 class SimpleCentralCell:
-    """
-    Class to construct the central cell region of a simple mirror machine.
-    """
-    def __init__(self, axial_length, layers):
-        self.axial_length = axial_length
-        self.layers = layers
-        self._cells = []
-        self._regions = []
-        self._full_region_list = []
-
-    def build_cells(self, vacuum_section_regions, room_region, add_cell_callback):
-        central_cell_length_from_midplane = self.axial_length / 2
+    """Builds the central cell structure for simple mirror machine."""
+    
+    def __init__(self, cc_params, material_ns):
+        self.cc_params = cc_params
+        self.material_ns = material_ns
+        self.central_cell_cells = []
+        self.central_cell_cylinders = []
+        self.central_cell_cylinders_radii = []
+        self.tally_descriptors = []
+        
+    def build_central_cell(self, outer_radius, room_region, vacuum_vessel_regions=None):
+        """Build the central cell structure."""
+        # The central cell should start from the outermost radius of the vacuum vessel
+        # and build outward, following the same logic as the tandem model
+        inner_radius = outer_radius  # Start from the vacuum vessel's outer radius
+        self.central_cell_cylinders_radii = inner_radius + np.cumsum([layer["thickness"] for layer in self.cc_params["layers"]])
+        
+        # Create ZCylinders for each layer
+        for radius in self.central_cell_cylinders_radii:
+            cylinder = openmc.ZCylinder(r=radius)
+            self.central_cell_cylinders.append(cylinder)
         
         # Define axial boundary planes
-        left_plane = openmc.ZPlane(-central_cell_length_from_midplane)
-        right_plane = openmc.ZPlane(central_cell_length_from_midplane)
+        central_cell_length_from_midplane = self.cc_params["axial_length"] / 2
+        left_plane_central_cell = openmc.ZPlane(-central_cell_length_from_midplane)
+        right_plane_central_cell = openmc.ZPlane(central_cell_length_from_midplane)
         
-        # Compute radii for each layer
-        central_cell_cylinders_radii = np.cumsum([layer["thickness"] for layer in self.layers])
+        # Create the first cell (innermost region)
+        # IMPORTANT: Subtract the vacuum vessel regions to avoid overlap
+        if vacuum_vessel_regions:
+            first_cell_region = (-right_plane_central_cell & +left_plane_central_cell & -self.central_cell_cylinders[0])
+            # Subtract all vacuum vessel regions
+            for vv_region in vacuum_vessel_regions:
+                first_cell_region = first_cell_region & ~vv_region
+        else:
+            first_cell_region = (-right_plane_central_cell & +left_plane_central_cell & -self.central_cell_cylinders[0])
         
-        # Create cells for each layer
-        for i in range(len(central_cell_cylinders_radii)):
-            if i == 0:
-                region = (-right_plane & +left_plane & ~vacuum_section_regions[-1] & 
-                         -openmc.ZCylinder(r=central_cell_cylinders_radii[i]))
-            else:
-                region = (-right_plane & +left_plane & 
-                         -openmc.ZCylinder(r=central_cell_cylinders_radii[i]) & 
-                         +openmc.ZCylinder(r=central_cell_cylinders_radii[i-1]))
+        first_cell = openmc.Cell(
+            2000,
+            region=first_cell_region,
+            fill=self.cc_params["materials"][0]
+        )
+        self.central_cell_cells.append(first_cell)
+        
+        # Create subsequent layers
+        for i in range(1, len(self.central_cell_cylinders_radii)):
+            cyl_region = (-right_plane_central_cell
+                         & +left_plane_central_cell
+                         & -self.central_cell_cylinders[i]
+                         & +self.central_cell_cylinders[i - 1])
             
-            cell = openmc.Cell(2000 + i, region=region, fill=getattr(m, self.layers[i]["material"]))
-            self._cells.append(cell)
-            self._regions.append(region)
-            self._full_region_list.append(region)
-            room_region &= ~region
-            add_cell_callback(cell)
+            # Subtract vacuum vessel regions from subsequent layers too
+            if vacuum_vessel_regions:
+                for vv_region in vacuum_vessel_regions:
+                    cyl_region = cyl_region & ~vv_region
             
-        return self._cells
+            new_cell = openmc.Cell(2000 + i, region=cyl_region, fill=self.cc_params["materials"][i])
+            self.central_cell_cells.append(new_cell)
+        
+        # Add tally descriptors for central cell
+        if "tallies" in self.cc_params:
+            tally_data = self.cc_params["tallies"]
+            
+            # Handle breeder tallies (for the first layer - breeding blanket)
+            if "breeder" in tally_data:
+                breeder_tallies = tally_data["breeder"]
+                if len(self.central_cell_cells) > 0:
+                    self.tally_descriptors.append({
+                        "type": "central_cell",
+                        "location": "breeder",
+                        "description": "breeding_blanket",
+                        "cell": self.central_cell_cells[0],
+                        "cell_tallies": breeder_tallies.get("cell_tallies", []),
+                        "mesh_tallies": breeder_tallies.get("mesh_tallies", [])
+                    })
+            
+            # Handle layer tallies (for specific layers)
+            if "layer_tallies" in tally_data:
+                for layer_entry in tally_data["layer_tallies"]:
+                    position = layer_entry["position"]
+                    if position < len(self.central_cell_cells):
+                        layer_name = self.cc_params["layers"][position]["material"] if position < len(self.cc_params["layers"]) else "unknown"
+                        self.tally_descriptors.append({
+                            "type": "central_cell",
+                            "location": f"layer_{position}",
+                            "description": layer_name,
+                            "cell": self.central_cell_cells[position],
+                            "cell_tallies": layer_entry.get("cell_tallies", []),
+                            "mesh_tallies": layer_entry.get("mesh_tallies", [])
+                        })
+        
+        return self.central_cell_cells
+    
+    def get_outermost_radius(self):
+        """Get the outermost radius of the central cell."""
+        if len(self.central_cell_cylinders_radii) > 0:
+            return self.central_cell_cylinders_radii[-1]
+        return 0
+    
+    def get_tally_descriptors(self):
+        """Get tally descriptors for central cell."""
+        return self.tally_descriptors
 
-    def get_cells(self):
-        return self._cells
 
-    def get_regions(self):
-        return self._regions
-
-    def get_full_region_list(self):
-        return self._full_region_list
-
-class SimpleLFCoil:
-    """
-    Class to construct low-field coils for a simple mirror machine.
-    """
-    def __init__(self, shell_thicknesses, inner_dimensions, positions, materials):
-        self.shell_thicknesses = shell_thicknesses
-        self.inner_dimensions = inner_dimensions
-        self.positions = positions
-        self.materials = materials
-        self._cells = []
-        self._regions = []
-        self._full_region_list = []
-
-    def build_cells(self, central_cell_cylinders_radii, room_region, add_cell_callback):
-        for i, center in enumerate(self.positions):
-            # Generate cylindrical shell and inner region
+class SimpleLFCoilBuilder:
+    """Builds the LF (Low Field) coils for simple mirror machine."""
+    
+    def __init__(self, lf_params, material_ns):
+        self.lf_params = lf_params
+        self.material_ns = material_ns
+        self.lf_coil_regions = []
+        self.lf_coil_cells = []
+        self.lf_coil_shield_regions = []
+        self.lf_coil_shield_cells = []
+        self.tally_descriptors = []
+        
+    def build_lf_coils(self, outer_radius, room_region):
+        """Build the LF coils."""
+        for i, center_position in enumerate(self.lf_params["positions"]):
+            # Generate cylindrical shell and inner region for the LF coil
             lf_coil_shell, lf_coil_inner = hollow_cylinder_with_shell(
-                center,
-                central_cell_cylinders_radii[-1],
-                self.inner_dimensions["radial_thickness"],
-                self.inner_dimensions["axial_length"],
-                self.shell_thicknesses["front"],
-                self.shell_thicknesses["back"],
-                self.shell_thicknesses["axial"]
+                center_position,
+                outer_radius,
+                self.lf_params["inner_dimensions"]["radial_thickness"],
+                self.lf_params["inner_dimensions"]["axial_length"],
+                self.lf_params["shell_thicknesses"]["front"],
+                self.lf_params["shell_thicknesses"]["back"],
+                self.lf_params["shell_thicknesses"]["axial"]
             )
-
-            # Create cells for shell and inner region
-            shell_cell = openmc.Cell(
+            
+            # Create coil shell cell
+            lf_coil_shell_cell = openmc.Cell(
                 4000 + i,
                 region=lf_coil_shell,
-                fill=getattr(m, self.materials["shield"])
+                fill=self.lf_params["materials"]["shield"]
             )
             
-            inner_cell = openmc.Cell(
+            self.lf_coil_shield_regions.append(lf_coil_shell)
+            self.lf_coil_shield_cells.append(lf_coil_shell_cell)
+            
+            # Create coil inner cell
+            lf_coil_inner_cell = openmc.Cell(
                 4100 + i,
                 region=lf_coil_inner,
-                fill=getattr(m, self.materials["magnet"])
+                fill=self.lf_params["materials"]["magnet"]
             )
-
-            self._cells.extend([shell_cell, inner_cell])
-            self._regions.extend([lf_coil_shell, lf_coil_inner])
-            self._full_region_list.extend([lf_coil_shell, lf_coil_inner])
             
-            room_region &= ~lf_coil_shell & ~lf_coil_inner
-            add_cell_callback(shell_cell)
-            add_cell_callback(inner_cell)
+            self.lf_coil_regions.append(lf_coil_inner)
+            self.lf_coil_cells.append(lf_coil_inner_cell)
+            
+            # Add tally descriptors for LF coils
+            if "tallies" in self.lf_params:
+                # Add tally for magnet cell
+                self.tally_descriptors.append({
+                    "type": "lf_coil",
+                    "location": f"coil_{i}",
+                    "description": "magnet",
+                    "cell": lf_coil_inner_cell,
+                    "cell_tallies": self.lf_params["tallies"].get("cell_tallies", []),
+                    "mesh_tallies": self.lf_params["tallies"].get("mesh_tallies", [])
+                })
+        
+        return self.lf_coil_cells + self.lf_coil_shield_cells
+    
+    def get_tally_descriptors(self):
+        """Get tally descriptors for LF coils."""
+        return self.tally_descriptors
 
-        return self._cells
 
-    def get_cells(self):
-        return self._cells
-
-    def get_regions(self):
-        return self._regions
-
-    def get_full_region_list(self):
-        return self._full_region_list
-
-class SimpleHFCoil:
-    """
-    Class to construct high-field coils for a simple mirror machine.
-    """
-    def __init__(self, magnet, casing_layers, shield):
-        self.magnet = magnet
-        self.casing_layers = casing_layers
-        self.shield = shield
-        self._cells = []
-        self._regions = []
-        self._full_region_list = []
-
-    def build_cells(self, bottleneck_cylinders_radii, central_cell_length_from_midplane, room_region, add_cell_callback):
-        # Compute HF coil center position
-        casing_layers_thickness = np.array([layer["thickness"] for layer in self.casing_layers])
+class SimpleHFCoilBuilder:
+    """Builds the HF (High Field) coils for simple mirror machine."""
+    
+    def __init__(self, hf_params, material_ns):
+        self.hf_params = hf_params
+        self.material_ns = material_ns
+        self.hf_coil_cells = []
+        self.hf_coil_regions = []
+        self.tally_descriptors = []
+        
+    def build_hf_coils(self, central_cell_length_from_midplane, bottleneck_cylinders_radii, room_region, hf_z0_offset=0):
+        """Build the HF coils."""
+        # Calculate HF coil center position
+        casing_layers_thickness = np.array([layer["thickness"] for layer in self.hf_params["casing_layers"]])
+        
         hf_coil_center_z0 = (
             central_cell_length_from_midplane
-            + self.shield["shield_central_cell_gap"]
-            + self.shield["axial_thickness"][0]
+            + self.hf_params["shield"]["shield_central_cell_gap"]
+            + self.hf_params["shield"]["axial_thickness"][0]
             + np.sum(casing_layers_thickness)
-            + self.magnet["axial_thickness"] / 2
+            + self.hf_params["magnet"]["axial_thickness"] / 2
+            + hf_z0_offset
         )
-
+        
         # Compute inner radius for magnet and casings
+        # HF coils should start from the outermost radius of the vacuum vessel structural layers
+        # NOT from the bottleneck radius to avoid overlap with vacuum vessel
         inner_radius_magnet_casings = (
-            bottleneck_cylinders_radii[-1]
-            + self.shield["radial_thickness"][0]
-            + self.shield["radial_gap_before_casing"]
+            bottleneck_cylinders_radii[-1]  # This should be the VV outer radius, not bottleneck
+            + self.hf_params["shield"]["radial_thickness"][0]
+            + self.hf_params["shield"]["radial_gap_before_casing"]
         )
-
-        # Build left and right HF coils
-        for z0, cell_id_base in [(hf_coil_center_z0, 6101), (-hf_coil_center_z0, 6102)]:
-            # Build shield regions
-            shield_regions = nested_cylindrical_shells(
-                z0,
-                inner_radius_magnet_casings,
-                self.magnet["radial_thickness"],
-                self.magnet["axial_thickness"],
-                casing_layers_thickness,
-                casing_layers_thickness,
-                casing_layers_thickness
-            )
-
-            # Create magnet cell
-            magnet_cell = openmc.Cell(
-                cell_id_base,
-                region=shield_regions[0],
-                fill=getattr(m, self.magnet["material"])
-            )
-            self._cells.append(magnet_cell)
-            self._regions.append(shield_regions[0])
-            self._full_region_list.append(shield_regions[0])
-            room_region &= ~shield_regions[0]
-            add_cell_callback(magnet_cell)
-
-            # Create casing cells
-            for i in range(1, len(shield_regions)):
-                casing_cell = openmc.Cell(
-                    6500 + i,
-                    region=shield_regions[i],
-                    fill=getattr(m, self.casing_layers[i-1]["material"])
-                )
-                self._cells.append(casing_cell)
-                self._regions.append(shield_regions[i])
-                self._full_region_list.append(shield_regions[i])
-                room_region &= ~shield_regions[i]
-                add_cell_callback(casing_cell)
-
-        return self._cells
-
-    def get_cells(self):
-        return self._cells
-
-    def get_regions(self):
-        return self._regions
-
-    def get_full_region_list(self):
-        return self._full_region_list
-
-class SimpleEndCell:
-    """
-    Class to construct end cells for a simple mirror machine.
-    """
-    def __init__(self, axial_length, shell_thickness, diameter, shell_material, inner_material):
-        self.axial_length = axial_length
-        self.shell_thickness = shell_thickness
-        self.outer_radius = diameter / 2
-        self.shell_material = shell_material
-        self.inner_material = inner_material
-        self._cells = []
-        self._regions = []
-        self._full_region_list = []
-
-    def build_cells(self, hf_center_z0, hf_magnet, hf_shield, casing_thicknesses, vacuum_section_regions, room_region, add_cell_callback):
-        for z0, cell_id_base in [(hf_center_z0, 5001), (-hf_center_z0, 5003)]:
-            # Calculate end cell position
-            z0 = z0 + (
-                hf_shield["axial_thickness"][0]
-                + np.sum(casing_thicknesses)
-                + hf_magnet["axial_thickness"] / 2
-                + self.shell_thickness
-                + self.axial_length / 2
-            )
-
-            # Create shell and inner regions
-            shell_region, inner_region = cylinder_with_shell(
-                z0,
-                self.outer_radius - self.shell_thickness,
-                self.axial_length,
-                self.shell_thickness
-            )
-
-            # Exclude vacuum section regions
-            shell_region &= ~vacuum_section_regions[-1]
-            inner_region &= ~vacuum_section_regions[-1]
-
-            # Create cells
-            shell_cell = openmc.Cell(
-                cell_id_base,
-                region=shell_region,
-                fill=getattr(m, self.shell_material)
-            )
+        
+        # Define regions for left and right HF coils
+        # Start from the vacuum vessel's outermost radius
+        vv_outermost_radius = bottleneck_cylinders_radii[0]  # This is the VV outer radius
+        
+        # Create arrays that include casing layers + shield
+        # Sequence: magnet -> casing layers -> shield
+        all_layers_front_thickness = np.concatenate([casing_layers_thickness, [self.hf_params["shield"]["radial_thickness"][0]]])
+        all_layers_back_thickness = np.concatenate([casing_layers_thickness, [self.hf_params["shield"]["radial_thickness"][1]]])
+        all_layers_axial_thickness = np.concatenate([casing_layers_thickness, [self.hf_params["shield"]["axial_thickness"][0]]])
+        
+        shield_regions_right = nested_cylindrical_shells(
+            hf_coil_center_z0,
+            vv_outermost_radius,  # Start from the VV outer radius
+            self.hf_params["magnet"]["radial_thickness"],
+            self.hf_params["magnet"]["axial_thickness"],
+            all_layers_front_thickness, all_layers_back_thickness, all_layers_axial_thickness
+        )
+        
+        shield_regions_left = nested_cylindrical_shells(
+            -hf_coil_center_z0,
+            vv_outermost_radius,  # Start from the VV outer radius
+            self.hf_params["magnet"]["radial_thickness"],
+            self.hf_params["magnet"]["axial_thickness"],
+            all_layers_front_thickness, all_layers_back_thickness, all_layers_axial_thickness
+        )
+        
+        # Create magnet cells
+        hf_magnet_region_left = shield_regions_left[0]
+        hf_magnet_region_right = shield_regions_right[0]
+        
+        hf_magnet_left_cell = openmc.Cell(
+            6101, region=hf_magnet_region_left, 
+            fill=getattr(self.material_ns, self.hf_params["magnet"]["material"])
+        )
+        hf_magnet_right_cell = openmc.Cell(
+            6102, region=hf_magnet_region_right, 
+            fill=getattr(self.material_ns, self.hf_params["magnet"]["material"])
+        )
+        
+        self.hf_coil_cells.extend([hf_magnet_left_cell, hf_magnet_right_cell])
+        self.hf_coil_regions.extend([hf_magnet_region_left, hf_magnet_region_right])
+        
+        # Create casing cells and shield
+        casing_layers_materials = [getattr(self.material_ns, layer["material"]) for layer in self.hf_params["casing_layers"]]
+        shield_material = getattr(self.material_ns, self.hf_params["shield"]["material"])
+        
+        for i in range(1, len(shield_regions_left)):
+            combined_region = shield_regions_left[i] | shield_regions_right[i]
             
-            inner_cell = openmc.Cell(
-                cell_id_base + 1,
-                region=inner_region,
-                fill=getattr(m, self.inner_material)
-            )
-
-            self._cells.extend([shell_cell, inner_cell])
-            self._regions.extend([shell_region, inner_region])
-            self._full_region_list.extend([shell_region, inner_region])
+            # Determine material: casing layers first, then shield
+            if i <= len(casing_layers_materials):
+                material = casing_layers_materials[i - 1]
+                cell_id = 6500 + i
+            else:
+                material = shield_material
+                cell_id = 6200 + (i - len(casing_layers_materials))
             
-            room_region &= ~shell_region & ~inner_region
-            add_cell_callback(shell_cell)
-            add_cell_callback(inner_cell)
+            combined_region_cell = openmc.Cell(
+                cell_id, region=combined_region, 
+                fill=material
+            )
+            self.hf_coil_cells.append(combined_region_cell)
+            self.hf_coil_regions.append(combined_region)
+        
 
-        return self._cells
+        
+        # Add tally descriptors for HF coils
+        if "tallies" in self.hf_params:
+            # Add tallies for magnet cells
+            self.tally_descriptors.append({
+                "type": "hf_coil",
+                "location": "right",
+                "description": "magnet",
+                "cell": hf_magnet_right_cell,
+                "cell_tallies": self.hf_params["tallies"].get("cell_tallies", []),
+                "mesh_tallies": self.hf_params["tallies"].get("mesh_tallies", [])
+            })
+            self.tally_descriptors.append({
+                "type": "hf_coil",
+                "location": "left",
+                "description": "magnet",
+                "cell": hf_magnet_left_cell,
+                "cell_tallies": self.hf_params["tallies"].get("cell_tallies", []),
+                "mesh_tallies": self.hf_params["tallies"].get("mesh_tallies", [])
+            })
+        
+        return self.hf_coil_cells
+    
+    def get_tally_descriptors(self):
+        """Get tally descriptors for HF coils."""
+        return self.tally_descriptors
 
-    def get_cells(self):
-        return self._cells
 
-    def get_regions(self):
-        return self._regions
+class SimpleEndCellBuilder:
+    """Builds the end cells for simple mirror machine."""
+    
+    def __init__(self, end_params, material_ns):
+        self.end_params = end_params
+        self.material_ns = material_ns
+        self.end_cell_cells = []
+        self.end_cell_regions = []
+        self.tally_descriptors = []
+        
+    def build_end_cells(self, end_cell_z0_offset, hf_coil_shield, casing_layers_thickness, hf_coil_magnet, vacuum_section_regions):
+        """Build the end cells."""
+        end_cell_radial_thickness = self.end_params["diameter"] / 2
+        
+        # Compute Z-Positions for End Cells following run_simple_mirror_model logic
+        # The right end cell is positioned beyond the HF coil, accounting for:
+        # 1. The axial thickness of the HF coil shield
+        # 2. The total casing thickness  
+        # 3. Half of the HF coil's axial thickness
+        # 4. The end cell's shell thickness
+        # 5. Half of the end cell's axial length
+        
+        right_end_cell_z0 = (
+            end_cell_z0_offset  # This is already calculated  Half of the end cell's axial length
+        )
+        
+        # The left end cell is symmetrically positioned at the negative Z-coordinate
+        left_end_cell_z0 = -right_end_cell_z0
+        
+        # Define End Cell Shells and Inner Volumes
+        # Each end cell consists of an outer shell and an inner vacuum region
+        # Use cylinder_with_shell function as in the reference implementation
+        
+        left_end_cell_shell, left_end_cell_inner = cylinder_with_shell(
+            left_end_cell_z0, 
+            end_cell_radial_thickness,  # Use the already calculated radial thickness
+            self.end_params["axial_length"], 
+            self.end_params["shell_thickness"]
+        )
+        
+        right_end_cell_shell, right_end_cell_inner = cylinder_with_shell(
+            right_end_cell_z0, 
+            end_cell_radial_thickness,  # Use the already calculated radial thickness
+            self.end_params["axial_length"], 
+            self.end_params["shell_thickness"]
+        )
+        
+        # Exclude all regions of the vacuum section from the inner volumes and shells
+        for region in vacuum_section_regions:
+            left_end_cell_shell &= ~region
+            right_end_cell_shell &= ~region
+            left_end_cell_inner &= ~region
+            right_end_cell_inner &= ~region
+        
+        # Create cells
+        end_cell_left_shell_cell = openmc.Cell(
+            5001, region=left_end_cell_shell,
+            fill=self.end_params["shell_material"]
+        )
+        
+        end_cell_left_inner_cell = openmc.Cell(
+            5002, region=left_end_cell_inner,
+            fill=self.end_params["inner_material"]
+        )
+        
+        end_cell_right_shell_cell = openmc.Cell(
+            5003, region=right_end_cell_shell,
+            fill=self.end_params["shell_material"]
+        )
+        
+        end_cell_right_inner_cell = openmc.Cell(
+            5004, region=right_end_cell_inner,
+            fill=self.end_params["inner_material"]
+        )
+        
+        self.end_cell_cells.extend([
+            end_cell_left_shell_cell, end_cell_left_inner_cell,
+            end_cell_right_shell_cell, end_cell_right_inner_cell
+        ])
+        
+        self.end_cell_regions.extend([
+            left_end_cell_shell, left_end_cell_inner,
+            right_end_cell_shell, right_end_cell_inner
+        ])
+        
+        # Add tally descriptors for end cells
+        if "tallies" in self.end_params:
+            self.tally_descriptors.append({
+                "type": "end_cell",
+                "location": "left",
+                "description": "shell",
+                "cell": end_cell_left_shell_cell,
+                "cell_tallies": self.end_params["tallies"].get("cell_tallies", []),
+                "mesh_tallies": self.end_params["tallies"].get("mesh_tallies", [])
+            })
+            self.tally_descriptors.append({
+                "type": "end_cell",
+                "location": "right",
+                "description": "shell",
+                "cell": end_cell_right_shell_cell,
+                "cell_tallies": self.end_params["tallies"].get("cell_tallies", []),
+                "mesh_tallies": self.end_params["tallies"].get("mesh_tallies", [])
+            })
+        
+        return self.end_cell_cells
+    
+    def get_tally_descriptors(self):
+        """Get tally descriptors for end cells."""
+        return self.tally_descriptors
 
-    def get_full_region_list(self):
-        return self._full_region_list
-
-class SimpleTallyBuilder:
-    """
-    Collects tally descriptors and generates OpenMC Tally objects for simple mirror model.
-    Supports both cell and mesh tallies.
-    """
-    def __init__(self):
-        self._tallies = []
-        self._tally_descriptors = []
-
-    def add_descriptors(self, descriptors):
-        for desc in descriptors:
-            self._add_cell_tallies(desc)
-            self._add_mesh_tallies(desc)
-
-    def _add_cell_tallies(self, desc):
-        for i, entry in enumerate(desc.get("cell_tallies", [])):
-            filters = [openmc.CellFilter(desc["cell"])] + strings_to_openmc_filters(entry.get("filters", []))
-            tally = openmc.Tally(name=f"{desc['type']}_{desc['location']}_{desc['description']}_cell_tally_{i+1}")
-            tally.filters = filters
-            tally.scores = entry.get("scores", [])
-            if "nuclides" in entry:
-                tally.nuclides = entry["nuclides"]
-            self._tallies.append(tally)
-
-    def _add_mesh_tallies(self, desc):
-        for i, entry in enumerate(desc.get("mesh_tallies", [])):
-            mesh = hollow_mesh_from_domain(desc["cell"], entry["dimensions"])
-            filters = [openmc.MeshFilter(mesh)] + strings_to_openmc_filters(entry.get("filters", []))
-            tally = openmc.Tally(name=f"{desc['type']}_{desc['location']}_{desc['description']}_mesh_tally_{i+1}")
-            tally.filters = filters
-            tally.scores = entry.get("scores", [])
-            if "nuclides" in entry:
-                tally.nuclides = entry["nuclides"]
-            self._tallies.append(tally)
-
-    def get_tallies(self):
-        return self._tallies
-
-    def add_tally_descriptor(self, descriptor):
-        self._tally_descriptors.append(descriptor)
 
 class SimpleMachineBuilder:
-    """
-    Modular builder for simple mirror fusion machines.
-    Components: VV, FW, Central Cell, LF/HF coils, End cells, Room, Tallies.
-    """
-    def __init__(self, vv_params, central_cell_params, lf_coil_params, hf_coil_params, end_cell_params, material_ns):
+    """Main builder class for simple mirror machine."""
+    
+    def __init__(self, vv_params, cc_params, lf_params, hf_params, end_params, material_ns):
         self.vv_params = vv_params
-        self.central_cell_params = central_cell_params
-        self.lf_coil_params = lf_coil_params
-        self.hf_coil_params = hf_coil_params
-        self.end_cell_params = end_cell_params
+        self.cc_params = cc_params
+        self.lf_params = lf_params
+        self.hf_params = hf_params
+        self.end_params = end_params
         self.material_ns = material_ns
-
-        # Initialize bounding box and room
-        self._bounding_surface = openmc.model.RectangularParallelepiped(
-            xmin=-400, xmax=400, ymin=-400, ymax=400,
+        
+        self.universe_machine = openmc.Universe(786)
+        self.room_region = None
+        self.all_cells = []
+        
+        # Initialize component builders
+        self.vacuum_vessel = SimpleVacuumVessel(vv_params, material_ns)
+        self.central_cell = SimpleCentralCell(cc_params, material_ns)
+        self.lf_coils = SimpleLFCoilBuilder(lf_params, material_ns)
+        self.hf_coils = SimpleHFCoilBuilder(hf_params, material_ns)
+        self.end_cells = SimpleEndCellBuilder(end_params, material_ns)
+        
+        # Initialize tally builder
+        self.tally_builder = TallyBuilder()
+        
+    def _add_cell(self, cell):
+        """Add a cell to the universe."""
+        self.universe_machine.add_cells([cell])
+        self.all_cells.append(cell)
+        
+    def _subtract_from_room(self, regions):
+        """Subtract regions from the room."""
+        for region in regions:
+            self.room_region &= ~region
+            
+    def build_vacuum_vessel(self):
+        """Build the vacuum vessel."""
+        # Create room
+        bounding_surface = openmc.model.RectangularParallelepiped(
+            xmin=-400, xmax=400, ymin=-400, ymax=400, 
             zmin=-1350, zmax=1350, boundary_type='vacuum'
         )
-        self._room_region = -self._bounding_surface
-
-        # Initialize component builders
-        self.vv_builder = None
-        self.fw_builder = None
-        self.central_cell_builder = None
-        self.lf_coil_builder = None
-        self.hf_coil_builder = None
-        self.end_cell_builder = None
-
-        # Initialize universe and storage
-        self._universe = openmc.Universe(786)
-        self._all_cells = []
-        self._regions = {
-            "vv": None,
-            "fw": None,
-            "central_cell": None,
-            "lf_coils": None,
-            "hf_coils": None,
-            "end_cell": None
-        }
-
-        # Initialize tally builder
-        self.tally_builder = SimpleTallyBuilder()
-
-        # Create room cell
-        room_cell = openmc.Cell(100, region=self._room_region, fill=getattr(self.material_ns, "air"))
-        self._universe.add_cell(room_cell)
-
-    def _add_cell(self, cell):
-        self._universe.add_cell(cell)
-        self._all_cells.append(cell)
-
-    def build_vacuum_vessel(self):
-        self.vv_builder = SimpleVacuumVessel(
-            self.vv_params["machine_length_from_midplane"],
-            self.vv_params["first_vv_plane_from_midplane"],
-            self.vv_params["cone_angle"],
-            self.vv_params["vacuum_chamber"],
-            self.vv_params["bottleneck_cylinder"],
-            getattr(self.material_ns, "vacuum")
-        )
-        vv_cell = self.vv_builder.build_cell()
-        self._add_cell(vv_cell)
-        self._regions["vv"] = self.vv_builder.get_region()
-        self._room_region &= ~self.vv_builder.get_region()
-
-    def build_first_wall(self):
-        self.fw_builder = SimpleFWStructure(
-            self.vv_params["structure"],
-            self.vv_params["vacuum_chamber"]["radius"],
-            self.vv_params["bottleneck_cylinder"]["cylinder_radius"],
-            getattr(self.material_ns, self.vv_params["vacuum_chamber"]["material"]),
-            self.vv_params["first_vv_plane_from_midplane"],
-            self.vv_params["machine_length_from_midplane"],
-            self.vv_params["cone_angle"]
-        )
-        self.fw_builder.build_cells(
-            self.material_ns,
-            self._room_region,
-            self._add_cell
-        )
-        self._regions["fw"] = self.fw_builder.get_regions()
-
+        self.room_region = -bounding_surface
+        room_cell = openmc.Cell(100, region=self.room_region, fill=self.material_ns.air)
+        self._add_cell(room_cell)
+        
+        # Build vacuum vessel
+        vv_cells, vv_regions = self.vacuum_vessel.build_vacuum_vessel(self.room_region)
+        for cell in vv_cells:
+            self._add_cell(cell)
+        self._subtract_from_room(vv_regions)
+        
     def build_central_cell(self):
-        self.central_cell_builder = SimpleCentralCell(
-            self.central_cell_params["axial_length"],
-            self.central_cell_params["layers"]
-        )
-        self.central_cell_builder.build_cells(
-            self.fw_builder.get_regions(),
-            self._room_region,
-            self._add_cell
-        )
-        self._regions["central_cell"] = self.central_cell_builder.get_regions()
-
+        """Build the central cell."""
+        outer_radius = self.vacuum_vessel.get_outermost_radius()
+        # Pass vacuum vessel regions to avoid overlap
+        vacuum_vessel_regions = self.vacuum_vessel.vacuum_section_regions
+        cc_cells = self.central_cell.build_central_cell(outer_radius, self.room_region, vacuum_vessel_regions)
+        for cell in cc_cells:
+            self._add_cell(cell)
+        self._subtract_from_room([cell.region for cell in cc_cells])
+        
     def build_lf_coils(self):
-        self.lf_coil_builder = SimpleLFCoil(
-            self.lf_coil_params["shell_thicknesses"],
-            self.lf_coil_params["inner_dimensions"],
-            self.lf_coil_params["positions"],
-            self.lf_coil_params["materials"]
-        )
-        self.lf_coil_builder.build_cells(
-            [r.r for r in self.fw_builder.get_regions()],
-            self._room_region,
-            self._add_cell
-        )
-        self._regions["lf_coils"] = self.lf_coil_builder.get_regions()
-
-        # Add LF coil tallies
-        if "tallies" in self.lf_coil_params:
-            for i, cell in enumerate(self.lf_coil_builder.get_cells()):
-                if cell.id >= 4100:  # LF coil inner cells
-                    self.tally_builder.add_tally_descriptor({
-                        "type": "lf_coil",
-                        "location": f"coil_{i}",
-                        "description": "magnet",
-                        "cell": cell,
-                        "cell_tallies": self.lf_coil_params["tallies"].get("cell_tallies", []),
-                        "mesh_tallies": self.lf_coil_params["tallies"].get("mesh_tallies", [])
-                    })
-
+        """Build the LF coils."""
+        outer_radius = self.central_cell.get_outermost_radius()
+        lf_cells = self.lf_coils.build_lf_coils(outer_radius, self.room_region)
+        for cell in lf_cells:
+            self._add_cell(cell)
+        self._subtract_from_room([cell.region for cell in lf_cells])
+        
     def build_hf_coils(self):
-        self.hf_coil_builder = SimpleHFCoil(
-            self.hf_coil_params["magnet"],
-            self.hf_coil_params["casing_layers"],
-            self.hf_coil_params["shield"]
+        """Build the HF coils."""
+        central_cell_length_from_midplane = self.cc_params["axial_length"] / 2
+        
+        # Calculate HF coil offset based on axial length relationship
+        hf_z0_offset = (self.vv_params["central_axial_length"] >= self.cc_params["axial_length"]) * (self.vv_params["central_axial_length"] / 2 - self.cc_params["axial_length"] / 2)
+        
+        # HF coils should start from the outermost radius of the vacuum vessel structural layers
+        # NOT from the bottleneck radius to avoid overlap with vacuum vessel
+        vv_outermost_radius = self.vacuum_vessel.get_outermost_bottleneck_radius()
+        hf_starting_radii = [vv_outermost_radius]
+        
+        hf_cells = self.hf_coils.build_hf_coils(
+            central_cell_length_from_midplane, 
+            hf_starting_radii, 
+            self.room_region,
+            hf_z0_offset
         )
-        self.hf_coil_builder.build_cells(
-            [r.r for r in self.fw_builder.get_regions()],
-            self.central_cell_params["axial_length"] / 2,
-            self._room_region,
-            self._add_cell
-        )
-        self._regions["hf_coils"] = self.hf_coil_builder.get_regions()
-
-        # Add HF coil tallies
-        if "tallies" in self.hf_coil_params:
-            for cell in self.hf_coil_builder.get_cells():
-                if cell.id == 6101:  # Right HF coil
-                    self.tally_builder.add_tally_descriptor({
-                        "type": "hf_coil",
-                        "location": "right",
-                        "description": "magnet",
-                        "cell": cell,
-                        "cell_tallies": self.hf_coil_params["tallies"].get("cell_tallies", []),
-                        "mesh_tallies": self.hf_coil_params["tallies"].get("mesh_tallies", [])
-                    })
-
+        for cell in hf_cells:
+            self._add_cell(cell)
+        self._subtract_from_room([cell.region for cell in hf_cells])
+        
     def build_end_cells(self):
-        self.end_cell_builder = SimpleEndCell(
-            self.end_cell_params["axial_length"],
-            self.end_cell_params["shell_thickness"],
-            self.end_cell_params["diameter"],
-            self.end_cell_params["shell_material"],
-            self.end_cell_params["inner_material"]
-        )
-        self.end_cell_builder.build_cells(
-            self.central_cell_params["axial_length"] / 2,
-            self.hf_coil_params["magnet"],
-            self.hf_coil_params["shield"],
-            [layer["thickness"] for layer in self.hf_coil_params["casing_layers"]],
-            self.fw_builder.get_regions(),
-            self._room_region,
-            self._add_cell
-        )
-        self._regions["end_cell"] = self.end_cell_builder.get_regions()
+        """Build the end cells."""
+        # Calculate parameters needed for end cells
+        central_cell_length_from_midplane = self.cc_params["axial_length"] / 2
+        casing_layers_thickness = np.array([layer["thickness"] for layer in self.hf_params["casing_layers"]])
+        
+        # Calculate HF coil offset based on axial length relationship
+        hf_z0_offset = (self.vv_params["central_axial_length"] >= self.cc_params["axial_length"]) * (self.vv_params["central_axial_length"] / 2 - self.cc_params["axial_length"] / 2) + 10
 
+        # Calculate HF coil center position
+        hf_coil_center_z0 = (
+            central_cell_length_from_midplane
+            + self.hf_params["shield"]["shield_central_cell_gap"]
+            + self.hf_params["shield"]["axial_thickness"][0]
+            + np.sum(casing_layers_thickness)
+            + self.hf_params["magnet"]["axial_thickness"] / 2
+            + hf_z0_offset
+        )
+        
+        # Position end cells following the exact logic from run_simple_mirror_model
+        # End cells are positioned right after the HF coils, not way out beyond the VV
+        # We need to add the shield thickness, casing thickness, and magnet thickness
+        # to get to the edge of the HF coil, then add end cell dimensions
+        end_cell_z0_offset = (
+            hf_coil_center_z0 
+            + self.hf_params["shield"]["axial_thickness"][0]  # Axial thickness of the shield (toward midplane)
+            + np.sum(casing_layers_thickness)  # Total casing thickness
+            + self.hf_params["magnet"]["axial_thickness"] / 2  # Half of the magnet's axial thickness
+            + self.end_params["shell_thickness"]  # Shell thickness of the end cell
+            + self.end_params["axial_length"] / 2  # Half of the end cell's axial length
+        )
+
+        # # Combine all the regions of the vacuum vessel
+        # vacuum_section_regions = self.vacuum_vessel.vacuum_section_regions[0]
+        # # Remove the first region from the list
+        # for region in self.vacuum_vessel.vacuum_section_regions[1:]:
+        #     vacuum_section_regions |= region
+
+        end_cells = self.end_cells.build_end_cells(
+            end_cell_z0_offset,  # Position end cells beyond VV boundaries
+            self.hf_params["shield"],
+            casing_layers_thickness,
+            self.hf_params["magnet"],
+            self.vacuum_vessel.vacuum_section_regions
+        )
+        for cell in end_cells:
+            self._add_cell(cell)
+        self._subtract_from_room([cell.region for cell in end_cells])
+        
     def get_universe(self):
-        return self._universe
-
+        """Get the machine universe."""
+        return self.universe_machine
+        
     def get_all_cells(self):
-        return self._all_cells
-
+        """Get all cells in the machine."""
+        return self.all_cells
+        
     def get_all_regions(self):
-        return self._regions
-
+        """Get all regions in the machine."""
+        return [cell.region for cell in self.all_cells]
+    
     def get_all_tallies(self):
-        """
-        Get all tallies configured for the model.
-        """
-        self.tally_builder.add_descriptors(self.tally_builder._tally_descriptors)
+        """Get all tallies configured for the model."""
+        # Collect tally descriptors from all components
+        all_descriptors = []
+        all_descriptors.extend(self.central_cell.get_tally_descriptors())
+        all_descriptors.extend(self.lf_coils.get_tally_descriptors())
+        all_descriptors.extend(self.hf_coils.get_tally_descriptors())
+        all_descriptors.extend(self.end_cells.get_tally_descriptors())
+        
+        # Add descriptors to tally builder
+        self.tally_builder.add_descriptors(all_descriptors)
+        
         return self.tally_builder.get_tallies()
+
+
+@contextlib.contextmanager
+def change_dir(destination):
+    """Context manager to change directory temporarily."""
+    original_dir = os.getcwd()
+    os.chdir(destination)
+    try:
+        yield
+    finally:
+        os.chdir(original_dir)
+
 
 def build_simple_model_from_input(input_data, output_dir="."):
     """
     Build a complete simple mirror model from input parameters.
+    Returns a complete OpenMC model ready to run.
     """
-    # Parse input parameters
-    vv_params, central_cell_params, lf_coil_params, hf_coil_params, end_cell_params = parse_simple_machine_input(input_data)
+    with change_dir(output_dir):
+        # Parse input parameters
+        vv_params, cc_params, lf_params, hf_params, end_params = parse_simple_machine_input(input_data, m)
 
-    # Create builder
-    builder = SimpleMachineBuilder(
-        vv_params, central_cell_params,
-        lf_coil_params, hf_coil_params, end_cell_params,
-        material_ns=m
-    )
+        # Create builder
+        builder = SimpleMachineBuilder(
+            vv_params, cc_params, lf_params, hf_params, end_params, m
+        )
 
-    # Build components
-    builder.build_vacuum_vessel()
-    builder.build_first_wall()
-    builder.build_central_cell()
-    builder.build_lf_coils()
-    builder.build_hf_coils()
-    builder.build_end_cells()
-
-    # Create geometry
-    universe_machine = builder.get_universe()
-    geometry = openmc.Geometry([openmc.Cell(fill=universe_machine)])
-    geometry.merge_surfaces = True
-
-    # Generate cross-sectional plot
-    geometry.root_universe.plot(
-        basis='xz',
-        width=(1000, 2800),
-        pixels=(700, 700),
-        color_by='material'
-    )
-    plt.savefig('simple_mirror_cross_section.png', bbox_inches="tight")
-
-    # Export geometry
-    geometry.export_to_xml("geometry.xml")
-
-    # Create and export tallies
-    tallies = openmc.Tallies(builder.get_all_tallies())
-    tallies.export_to_xml("tallies.xml")
-
-    return geometry, tallies
-
-        def get_neutron_wall_loading_model(self):
-        """
-        Get neutron wall loading model for the simple mirror machine.
-        """
-        # Create materials
-        tungsten = openmc.Material(31, name="tungsten")
-        tungsten.set_density("g/cm3", 19.25)
-        tungsten.add_element("W", 100)
-
-        my_materials = openmc.Materials([tungsten])
-        my_materials.export_to_xml(path='nwl/materials.xml')
-
-        # Get vacuum vessel geometric extents
-        vv_geometric_extents = self.vv_builder.get_vv_components()
+        # Build components - add central cell, LF coils, HF coils, and end cells
+        builder.build_vacuum_vessel()
+        builder.build_central_cell()
+        builder.build_lf_coils()
+        builder.build_hf_coils()
+        builder.build_end_cells()
         
-        # Extract key dimensions
-        left_end_vv = vv_geometric_extents['z_planes']['left_end']
-        right_end_vv = vv_geometric_extents['z_planes']['right_end']
-        central_radius_vv = vv_geometric_extents['central_cylinder_radius']
-        bottleneck_radius_vv = vv_geometric_extents['bottleneck_radius']
-
-        # Define model boundaries
-        model_right = openmc.ZPlane(z0=right_end_vv.z0 + 10, boundary_type='vacuum')
-        model_left = openmc.ZPlane(z0=left_end_vv.z0 - 10, boundary_type='vacuum')
-        model_side_outer_radius = openmc.ZCylinder(r=central_radius_vv + 25, boundary_type='vacuum', surface_id=123)
-
-        # Define first wall armor planes
-        centralfwarmor_right = vv_geometric_extents['z_planes']['central_right']
-        centralfwarmor_left = vv_geometric_extents['z_planes']['central_left']
+        # Check spacing for other components
+        total_vv_length = (builder.vv_params["left_bottleneck_length"] + 
+                          builder.vv_params["central_axial_length"] + 
+                          builder.vv_params["right_bottleneck_length"])
+        central_cell_length = builder.cc_params.get("axial_length", 0)
+        available_space_per_side = (total_vv_length - central_cell_length) / 2
         
-        rightendfwarmor_right = right_end_vv
-        rightendfwarmor_left = vv_geometric_extents['z_planes']['right_cone_plane']
+        if available_space_per_side < 250:
+            print(f"WARNING: Available space per side ({available_space_per_side:.1f} cm) is less than 250 cm!")
+            print(f"Total VV length: {total_vv_length} cm, Central cell: {central_cell_length} cm")
+        else:
+            print(f"✓ Spacing OK: {available_space_per_side:.1f} cm available on each side")
+
+        # Create geometry
+        universe_machine = builder.get_universe()
+        geometry = openmc.Geometry([openmc.Cell(fill=universe_machine)])
+        geometry.merge_surfaces = True
+
+        # Generate cross-sectional plot
+        geometry.root_universe.plot(
+            basis='xz',
+            width=(1000, 2800),
+            pixels=(700, 700),
+            color_by='material'
+        )
+        plt.savefig('simple_mirror_modular_cross_section.png', bbox_inches="tight")
+
+        # Export geometry
+        geometry.export_to_xml("geometry.xml")
+
+        # Create and export tallies
+        tallies = openmc.Tallies(builder.get_all_tallies())
+        tallies.export_to_xml("tallies.xml")
+
+        # Materials
+        materials = m.materials
+
+        # Load source configuration
+        with open('source_information.yaml', 'r') as f:
+            source_data = yaml.safe_load(f)
+
+        # Create source based on type
+        source_type = source_data['source']['type']
+        power_output = source_data['source']['power_output']
         
-        leftendfwarmor_right = vv_geometric_extents['z_planes']['left_cone_plane']
-        leftendfwarmor_left = left_end_vv
+        if source_type == "Volumetric":
+            # Volumetric source using vacuum vessel parameters
+            from src.paratan.source.core import VolumetricSource
+            source = VolumetricSource(
+                power_output=power_output,
+                vacuum_vessel_axial_length=builder.vv_params["central_axial_length"],
+                vacuum_vessel_outer_axial_length=builder.vv_params["outer_axial_length"],
+                vacuum_vessel_central_radius=builder.vv_params["central_radius"],
+                throat_radius=builder.vv_params["bottleneck_radius"],
+                z_origin=builder.vv_params["axial_midplane"],
+                conical_sources=5
+            ).create_openmc_source()
+            
+        elif source_type == "Uniform":
+            # Uniform cylindrical source
+            from src.paratan.source.core import UniformSource
+            length = source_data['source']['uniform']['length']
+            radius = source_data['source']['uniform']['radius']
+            source = UniformSource(power_output, length, radius).create_openmc_source()
+            
+        elif source_type == "1D_Varying":
+            # 1D varying source from file
+            from src.paratan.source.core import Source1D
+            file_name = source_data['source']['source_1D']['file_name']
+            radius = source_data['source']['source_1D']['radius']
+            source = Source1D(power_output, radius, file_name).create_openmc_source()
+            
+        elif source_type == "2D_Varying":
+            # 2D varying source from file
+            from src.paratan.source.core import Source2D
+            file_name = source_data['source']['source_2D']['file_name']
+            source = Source2D(power_output, file_name).create_openmc_source()
+            
+        elif source_type == "Custom":
+            # Custom source - handle later
+            print("Custom source type not yet implemented")
+            # Fallback to default source
+            source = openmc.Source()
+            source.space = openmc.stats.CylindricalIndependent(
+                r=openmc.stats.Discrete([0], [1.0]),
+                phi=openmc.stats.Uniform(a=0.0, b=2 * np.pi),
+                z=openmc.stats.Uniform(a=-600.0, b=600.0),
+            )
+            source.angle = openmc.stats.Isotropic()
+            source.energy = openmc.stats.Discrete([14e6], [1.0])
+        else:
+            raise ValueError(f"Unsupported source type: {source_type}")
 
-        # Set transmission boundaries
-        leftendfwarmor_left.boundary_type = 'transmission'
-        leftendfwarmor_right.boundary_type = 'transmission'
-        rightendfwarmor_right.boundary_type = 'transmission'
+        # Create settings
+        settings = openmc.Settings()
+        settings.run_mode = "fixed source"
+        settings.particles = int(source_data['settings']['particles_per_batch'])
+        settings.batches = source_data['settings']['batches']
+        settings.output = {'tallies': False}
 
-        # Define plasma region
-        centralplasma_outer_radius = openmc.ZCylinder(r=central_radius_vv)
-
-        return {
-            'materials': my_materials,
-            'surfaces': {
-                'model_boundaries': {
-                    'right': model_right,
-                    'left': model_left,
-                    'outer_radius': model_side_outer_radius
-                },
-                'first_wall': {
-                    'central': {
-                        'right': centralfwarmor_right,
-                        'left': centralfwarmor_left
-                    },
-                    'right': {
-                        'right': rightendfwarmor_right,
-                        'left': rightendfwarmor_left
-                    },
-                    'left': {
-                        'right': leftendfwarmor_right,
-                        'left': leftendfwarmor_left
-                    }
-                },
-                'plasma': {
-                    'outer_radius': centralplasma_outer_radius
-                }
-            }
+        freq = source_data['settings']['statepoint_frequency']
+        settings.statepoint = {
+            'batches': [1] + list(range(freq, settings.batches, freq)) + [settings.batches]
         }
+
+        settings.weight_windows_on = source_data['settings']['weight_windows']
+        settings.weight_window_checkpoints = {'collision': True, 'surface': True}
+
+        # Weight window generator
+        wwg = openmc.WeightWindowGenerator(
+            openmc.RegularMesh(),
+            energy_bounds=[0, 14e6],
+            particle_type='neutron',
+            method='magic',
+            max_realizations=25,
+            update_interval=1,
+            on_the_fly=True
+        )
+        settings.weight_windows_generator = [wwg]
+
+        settings.photon_transport = source_data['settings']['photon_transport']
+        settings.source = source
+
+        # Create and export final model
+        model = openmc.Model(geometry, materials, settings, tallies)
+        model.export_to_xml('model_xml_files')
+
+    return model

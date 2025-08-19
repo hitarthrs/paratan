@@ -58,6 +58,10 @@ biot-savart/
 mv_source.py
 
 run.py
+geometry.xml
+make_source_files_tbr.py
+
+paratan
 
 
 

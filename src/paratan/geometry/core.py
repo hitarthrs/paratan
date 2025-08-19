@@ -361,11 +361,14 @@ def nested_cylindrical_shells(z0, innermost_radius, inner_radial_thickness,inner
 
     inner_cylinders_radii_array = np.cumsum(layer_front_thickness[::-1])[::-1]+innermost_radius
     inner_cylinders_radii_array = np.append(inner_cylinders_radii_array, inner_cylinders_radii_array[-1]-layer_front_thickness[-1])
+    # Print the inner_cylinders_radii_array
+    print(f"inner_cylinders_radii_array: {inner_cylinders_radii_array}")
 
 
-    outer_cylinders_radii_array = np.cumsum(layer_back_thickness)+inner_cylinders_radii_array[0]+inner_radial_thickness
-    outer_cylinders_radii_array = np.append(outer_cylinders_radii_array, outer_cylinders_radii_array[-1]+layer_back_thickness[-1])
-
+    outer_cylinders_radii_array = np.array([inner_cylinders_radii_array[0]+inner_radial_thickness])
+    outer_cylinders_radii_array = np.concatenate((outer_cylinders_radii_array, np.cumsum(layer_back_thickness)+outer_cylinders_radii_array[0]))
+    # Print the outer_cylinders_radii_array
+    print(f"outer_cylinders_radii_array: {outer_cylinders_radii_array}")
 
     innermost_cylinder_front = openmc.ZCylinder(r = inner_cylinders_radii_array[0])
     innermost_cylinder_back = openmc.ZCylinder(r = outer_cylinders_radii_array[0])
@@ -580,5 +583,126 @@ def redefined_vacuum_vessel_region(outer_axial_length, central_axial_length, cen
         'bottleneck_radius': bottleneck_radius
     }
     
+    return vessel_region, components
+
+
+def single_vacuum_vessel_region(outer_axial_length, central_axial_length, central_radius, bottleneck_radius, left_bottleneck_length, right_bottleneck_length, axial_midplane=0.0):
+    
+    """
+    Generates an OpenMC region representing a single vacuum vessel section for one part of a fusion device.
+
+    The geometry is symmetric about an axial midplane and consists of:
+      1. A central cylindrical section.
+      2. A conical taper connecting to an outer bottleneck cylindrical section.
+      3. Thin outer cylindrical sections extending outward.
+
+    Parameters
+    ----------
+    outer_axial_length : float
+        Total axial length (cm) of the outer cylindrical segments beyond the cone sections.
+    central_axial_length : float
+        Total axial length (cm) of the central cylindrical section.
+    central_radius : float
+        Radius (cm) of the central cylindrical section.
+    bottleneck_radius : float
+        Radius (cm) of the outer (bottleneck) cylindrical sections.
+    left_bottleneck_length : float
+        Axial length (cm) of the bottleneck section on the left side of the midplane.
+    right_bottleneck_length : float
+        Axial length (cm) of the bottleneck section on the right side of the midplane.
+    axial_midplane : float, optional
+        Z-coordinate (cm) of the midplane. Default is 0.0.
+
+    Returns
+    -------
+    openmc.Region
+        An OpenMC region object representing the single vacuum vessel section.
+
+    Raises
+    ------
+    ValueError
+        If any input length or radius is non-positive.
+        If central_radius is less than bottleneck_radius.
+    """
+
+    # --- Input validation ---
+    if outer_axial_length <= 0 or central_axial_length <= 0:
+        raise ValueError("Axial lengths must be positive.")
+    if central_radius <= 0 or bottleneck_radius <= 0:
+        raise ValueError("Radii must be positive.")
+    if left_bottleneck_length <= 0 or right_bottleneck_length <= 0:
+        raise ValueError("Bottleneck lengths must be positive.")
+    if central_radius < bottleneck_radius:
+        raise ValueError("Central radius must be greater than bottleneck radius.")
+
+    # --- Set important z-positions ---
+    first_plane_distance = outer_axial_length / 2.0
+    second_plane_distance = central_axial_length / 2.0
+    
+    # Calculate cone angle based on geometry (same logic as redefined function)
+    angle = np.arctan(2*(central_radius - bottleneck_radius)/(central_axial_length - outer_axial_length))
+
+    right_outermost_plane_distance = second_plane_distance + right_bottleneck_length
+    left_outermost_plane_distance = -second_plane_distance - left_bottleneck_length
+
+    # --- Define Z-planes ---
+    central_cylinder_left_plane = openmc.ZPlane(z0=axial_midplane - first_plane_distance)
+    central_cylinder_right_plane = openmc.ZPlane(z0=axial_midplane + first_plane_distance)
+    
+    left_outer_cylinder_1 = openmc.ZPlane(z0=axial_midplane + left_outermost_plane_distance)
+    right_outer_cylinder_1 = openmc.ZPlane(z0=axial_midplane - second_plane_distance)
+    
+    left_outer_cylinder_2 = openmc.ZPlane(z0=axial_midplane + second_plane_distance)
+    right_outer_cylinder_2 = openmc.ZPlane(z0=axial_midplane + right_outermost_plane_distance)
+    
+    # --- Define cylinders ---
+    central_cell_cylinder = openmc.ZCylinder(r=central_radius)
+    outer_cylinder = openmc.ZCylinder(r=bottleneck_radius)
+    
+    # --- Build regions ---
+    central_cylinder = -central_cell_cylinder & +central_cylinder_left_plane & -central_cylinder_right_plane
+    
+    left_outer_cylinders_region = -outer_cylinder & (+left_outer_cylinder_1 & -right_outer_cylinder_1)
+    right_outer_cylinders_region = -outer_cylinder & (+left_outer_cylinder_2 & -right_outer_cylinder_2)
+    outer_cylinders_region = left_outer_cylinders_region | right_outer_cylinders_region
+    
+    # --- Build cones using calculated angle ---
+    left_cone = openmc.model.ZConeOneSided(
+        x0=0.0, y0=0.0, 
+        z0=axial_midplane - (central_radius/np.tan(angle) + first_plane_distance), 
+        r2=(np.tan(angle))**2
+    )
+    right_cone = openmc.model.ZConeOneSided(
+        x0=0.0, y0=0.0, 
+        z0=axial_midplane + (central_radius/np.tan(angle) + first_plane_distance), 
+        r2=(np.tan(angle))**2, 
+        up=False
+    )
+    
+    # --- Build cone regions ---
+    left_cone_region = -left_cone & -central_cylinder_left_plane & +left_outer_cylinder_1
+    right_cone_region = -right_cone & +central_cylinder_right_plane & -right_outer_cylinder_2
+    
+    # --- Full vessel region ---
+    vessel_region = left_cone_region | right_cone_region | outer_cylinders_region | central_cylinder
+
+    # --- Return region and components for reference ---
+    components = {
+        'central_cylinder': central_cylinder,
+        'left_cone': left_cone_region,
+        'right_cone': right_cone_region,
+        'left_outer_cylinder': left_outer_cylinders_region,
+        'right_outer_cylinder': right_outer_cylinders_region,
+        'outer_cylinders': outer_cylinders_region,
+        'planes': {
+            'central_left': central_cylinder_left_plane,
+            'central_right': central_cylinder_right_plane,
+            'left_end': left_outer_cylinder_1,
+            'left_cone_plane': right_outer_cylinder_1,
+            'right_cone_plane': left_outer_cylinder_2,
+            'right_end': right_outer_cylinder_2,
+        }
+    }
+
     return vessel_region, components
 

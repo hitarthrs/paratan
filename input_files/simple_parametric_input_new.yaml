@@ -1,30 +1,33 @@
 # ________________________________________ VACUUM VESSEL INFORMATION ________________________________________ #
+# This input file is designed for the single_vacuum_vessel_region function
+# Parameters match the new function signature for proper geometry construction
 
 vacuum_vessel:
-  machine_length_from_midplane: 500  # Distance from center plane to vessel end
-  first_vv_plane_from_midplane: 100  # Distance of central cell end from mid-plane
-  vacuum_chamber:
-    radius: 60
-    material: vacuum
-  bottleneck_cylinder:
-    plane_distance: 325  # Distance from mid-plane
-    cylinder_radius: 22.0  # Radius of bottleneck cylinder
-  cone_angle: 15  # Cone angle (degrees)
+  # New single_vacuum_vessel_region parameters
+  outer_axial_length: 450  # Total axial length of outer cylindrical segment (cm)
+  central_axial_length: 600  # Total axial length of central cylindrical section (cm)
+  central_radius: 75  # Radius of central cylindrical section (cm)
+  bottleneck_radius: 25.0  # Radius of outer bottleneck cylindrical section (cm)
+  left_bottleneck_length: 300  # Axial length of left bottleneck section (cm)
+  right_bottleneck_length: 300  # Axial length of right bottleneck section (cm)
+  axial_midplane: 0.0  # Z-coordinate of midplane (cm)
+  
+  # Structural layers (optional - can be added later)
   structure:
     first_wall: 
-      thickness: 0.5
+      thickness: 1.0
       material: tungsten
     vacuum_structure: 
-      thickness: 5.5
+      thickness: 2.0
       material: FW_FNSF
 
 # ________________________________________ CENTRAL CELL INFORMATION ________________________________________ #
 
 central_cell:
-  axial_length: 400
+  axial_length: 550  # Should match central_axial_length from vacuum vessel
   layers:
     - thickness: 77
-      material: vacuum  # Breeding Blanket
+      material: eutectic_breeding_material  # Breeding Blanket
     - thickness: 2
       material: BW_FNSF  # Back Wall
     - thickness: 30
@@ -32,6 +35,7 @@ central_cell:
     - thickness: 2.5
       material: water_cooled_wc  # HT Shield Back Plate
 
+  # Tallies commented out for initial geometry testing
   # tallies:
   #   breeder:
   #     cell_tallies:
@@ -53,22 +57,6 @@ central_cell:
   #         filters: ['fast_energies_filter']
   #         dimensions: [3,6,12]
 
-    # layer_tallies:
-    #   - position: 2
-    #     cell_tallies:
-    #       - scores: ['flux', 'heating', 'H3-production']
-    #         filters: ['neutron_filter']
-    #         nuclides: ['Li6', 'Li7']
-    #     mesh_tallies:
-    #       - scores: ['flux', 'heating']
-    #         filters: ['neutron_filter']
-    #         nuclides: ['Li6', 'Li7']
-    #         dimensions: [10,10,10]
-    #   - position: 3
-    #     cell_tallies:
-    #       - scores: ['heating']
-    #         filters: ['thermal_energies_filter']
-
 # ________________________________________ LF COIL PARAMETERS ________________________________________ #
 
 lf_coil:
@@ -84,8 +72,7 @@ lf_coil:
     shield: stainless
     magnet: Magnet_Winding_Pack_2
 
-  # ________________________________________ LF COIL TALLY FLAGS ________________________________________ #
-
+  # Tallies commented out for initial geometry testing
   # lf_coil_tallies:
   #   cell_tallies:
   #     - scores: ['flux', 'heating']
@@ -109,7 +96,7 @@ hf_coil:
   magnet:
     bore_radius: 60
     radial_thickness: 150
-    axial_thickness: 150
+    axial_thickness: 200
     material: Magnet_Winding_Pack_2
   casing_layers:
     - thickness: 1
@@ -123,22 +110,30 @@ hf_coil:
     axial_thickness: [20, 10]  # First value: towards midplane, second: away
     material: cooled_tungsten_boride
 
-  # hf_coil_tallies:
-  #   cell_tallies:
-  #     - scores: ['flux', 'heating']
-  #       filters: ['neutron_filter']
-  #       nuclides: ['Li6', 'Li7']
-  #     - scores: ['absorption']
-  #       filters: ['fast_energies_filter']
+  # Tallies commented out for initial geometry testing
+  hf_coil_tallies:
+    # cell_tallies:
+    #   - scores: ['heating']
+    #     filters: ['neutron_filter']
+    #     nuclides: ['Li6', 'Li7']
+    #   - scores: ['flux']
+    #     filters: ['neutron_filter']
+    #   - scores: ['absorption']
+    #     filters: ['fast_energies_filter']
 
-  #   mesh_tallies:
-  #     - scores: ['flux', 'heating']
-  #       filters: ['neutron_filter']
-  #       nuclides: ['Li6', 'Li7']
-  #       dimensions: [10,10,10]
-  #     - scores: ['absorption']
-  #       filters: ['fast_energies_filter']
-  #       dimensions: [3,26,12]
+    mesh_tallies:
+      # - scores: ['heating']
+      #   filters: ['neutron_filter']
+      #   dimensions: [50,1,30]
+      # - scores: ['heating']
+      #   filters: ['photon_filter']
+      #  dimensions: [50,1,30]
+      - scores: ['heating']
+        dimensions: [50,1,30]
+      - scores: ['flux']
+        filters: ['neutron_filter', 'fast_energies_filter']
+        dimensions: [50,1,30]
+
 
 # ________________________________________ END CELL PARAMETERS ________________________________________ #
 
@@ -149,6 +144,7 @@ end_cell:
   shell_material: stainless
   inner_material: vacuum
 
+  # Tallies commented out for initial geometry testing
   # end_cell_tallies:
   #   cell_tallies:
   #     - scores: ['flux', 'heating']
@@ -165,3 +161,22 @@ end_cell:
   #     - scores: ['absorption']
   #       filters: ['fast_energies_filter']
   #       dimensions: [3,6,12]
+
+# ________________________________________ NOTES ________________________________________ #
+# 
+# This input file is designed for testing the new single_vacuum_vessel_region function.
+# Key changes from the old format:
+# 
+# 1. Vacuum vessel parameters now match single_vacuum_vessel_region function signature
+# 2. All tallies are commented out for initial geometry testing
+# 3. Central cell axial_length matches vacuum vessel central_axial_length
+# 4. Parameters are designed to avoid geometry overlaps
+# 
+# Testing sequence:
+# 1. Test with only vacuum vessel (comment out other components)
+# 2. Add central cell
+# 3. Add LF coils  
+# 4. Add HF coils
+# 5. Add end cells
+# 6. Re-enable tallies one by one
+#

@@ -2,7 +2,7 @@
 
 vacuum_vessel:
   central_cell:
-    central_radius: 90
+    central_radius: 62
     central_axis_length: 600
     outer_axial_length: 500
   end_plug:
@@ -18,9 +18,9 @@ vacuum_vessel:
 first_wall:
   central_cell:
     layers:
-    - thickness: 0.62
+    - thickness: 0.5
       material: tungsten
-    - thickness: 5
+    - thickness: 2.5
       material: FW_FNSF
   end_plug:
     layers:
@@ -39,7 +39,7 @@ central_cell:
     axial_length: 650
     layers:
       - thickness: 95
-        material: air  # Breeding Blanket
+        material: enriched_lithium  # Breeding Blanket
       - thickness: 2
         material: BW_FNSF  # Back Wall
       - thickness: 30
@@ -155,7 +155,9 @@ end_plug:
     inner_dimensions:
       axial_length: 20
       radial_thickness: 10
-    positions: [-75, 75]  # Coil center positions along the Z-axis from the midplane of the end plug vacuum vessel
+    positions:
+      - 75
+      - -75  # Coil center positions along the Z-axis from the midplane of the end plug vacuum vessel
     materials:
       shield: stainless
       magnet: Magnet_Winding_Pack_2

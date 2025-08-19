@@ -4,6 +4,7 @@ import csv
 import numpy as np
 import pandas as pd
 
+
 def csv_columns_to_arrays(file_name):
 # Initialize empty lists to store the first and second columns
     column1 = []
@@ -67,7 +68,103 @@ def extend_and_plot_r_vs_z(r_coords, z_coords, data_matrix):
     
     plt.savefig('/res_dir/2d-source_ext')
 
-    return r_coords, extended_z_coords, extended_data_matrix 
+    return r_coords, extended_z_coords, extended_data_matrix
+
+def volumetric_source_approximation(vacuum_vessel_axial_length, vacuum_vessel_outer_axial_length, vacuum_vessel_central_radius, throat_radius, z_origin = 0, conical_sources =  5):
+
+    """
+    Approximates a volumetric source distribution from a 2D source distribution.
+    """
+    
+    # Uniform source in the central area
+
+    z_distribution_cylindrical_region = openmc.stats.Uniform(-(vacuum_vessel_outer_axial_length / 2) + z_origin, (vacuum_vessel_outer_axial_length / 2) + z_origin)
+    r_distribution_cylindrical_region = openmc.stats.PowerLaw(0.001, vacuum_vessel_central_radius, -2)
+
+    # Instantiate lists of z and r distributions for the conical sources
+    z_distributions_conical_sources = []
+    r_distributions_conical_sources = []
+
+
+    # Calculate the angle for the cone
+    angle_cone = np.arctan(2*(vacuum_vessel_central_radius-throat_radius)/(vacuum_vessel_axial_length - vacuum_vessel_outer_axial_length))
+
+    
+    # Populate the z distribution arrays and r distribution arrays
+
+    step_size_z = (-vacuum_vessel_outer_axial_length + vacuum_vessel_axial_length) / (2* conical_sources)
+
+    step_size_r = np.tan(angle_cone) * step_size_z
+
+    r_start = vacuum_vessel_central_radius
+
+    # volumes for cylindrical sections in conical regions for normalization
+    volume_cylindrical_sections = []
+
+    for i in range(conical_sources):
+
+        z_start_left = z_origin - vacuum_vessel_outer_axial_length / 2 - (i+1) * step_size_z
+        z_end_left = z_start_left + step_size_z
+
+        z_start_right = z_origin + vacuum_vessel_outer_axial_length / 2 + (i) * step_size_z
+        z_end_right = z_start_right + step_size_z
+
+
+        z_dist_left = openmc.stats.Uniform(z_start_left, z_end_left)
+        z_dist_right = openmc.stats.Uniform(z_start_right, z_end_right)
+
+        z_distribution_mixture = openmc.stats.Mixture([0.5, 0.5], [z_dist_left, z_dist_right])
+
+        z_distributions_conical_sources.append(z_distribution_mixture)
+
+        radius = r_start - (i+1) * step_size_r
+
+        r_dist = openmc.stats.PowerLaw(0.001, radius, -2)
+
+        r_distributions_conical_sources.append(r_dist)
+
+        volume_cylindrical_sections.append(2*np.pi * (radius**2) * step_size_z)
+
+    # Create sources
+
+    total_volume = np.sum(volume_cylindrical_sections)+np.pi * (vacuum_vessel_central_radius**2) * vacuum_vessel_outer_axial_length
+
+    phi_distribution = openmc.stats.Uniform(0, 2 * np.pi)
+    energy_distribution = openmc.stats.Discrete([14.1e6], [1])
+
+    sources = []
+
+    central_uniform_source = openmc.IndependentSource()
+    central_uniform_source.particle = 'neutron'
+    central_uniform_source.angle = openmc.stats.Isotropic()
+    central_uniform_source.energy = energy_distribution
+    central_uniform_source.space = openmc.stats.CylindricalIndependent(
+        r_distribution_cylindrical_region,
+        phi_distribution,
+        z_distribution_cylindrical_region
+    )
+    central_uniform_source.strength = np.pi * (vacuum_vessel_central_radius**2) * vacuum_vessel_outer_axial_length / total_volume
+
+    sources.append(central_uniform_source)
+
+    for i in range(conical_sources):
+        conical_source = openmc.IndependentSource()
+        conical_source.particle = 'neutron'
+        conical_source.angle = openmc.stats.Isotropic()
+
+        conical_source.space = openmc.stats.CylindricalIndependent(
+            r_distributions_conical_sources[i],
+            phi_distribution,
+            z_distributions_conical_sources[i]
+        )
+
+        conical_source.energy = energy_distribution
+
+        conical_source.strength = volume_cylindrical_sections[i] / total_volume
+        sources.append(conical_source)
+
+    return sources
+    
 
 # Parent class representing a generic neutron source
 class Source:
@@ -248,6 +345,26 @@ class Source2D(Source):
         print(f" Strength (total neutrons/sec): {self.strength:.3e}")
         print(f" Loaded source distribution from {self.file_name}")
 
+class VolumetricSource(Source):
+    def __init__(self, power_output, vacuum_vessel_axial_length, vacuum_vessel_outer_axial_length, vacuum_vessel_central_radius, throat_radius, z_origin = 0, conical_sources =  5):
+        super().__init__(power_output)  # Initialize parent class (calculates neutron strength)
+        self.vacuum_vessel_axial_length = vacuum_vessel_axial_length
+        self.vacuum_vessel_outer_axial_length = vacuum_vessel_outer_axial_length
+        self.vacuum_vessel_central_radius = vacuum_vessel_central_radius
+        self.throat_radius = throat_radius
+        self.z_origin = z_origin
+        self.conical_sources = conical_sources
+
+    def create_openmc_source(self):
+        return volumetric_source_approximation(self.vacuum_vessel_axial_length, self.vacuum_vessel_outer_axial_length, self.vacuum_vessel_central_radius, self.throat_radius, self.z_origin, self.conical_sources)
+    
+    def describe(self):
+        print("Volumetric Source Distribution:")
+        print(f" Strength (total neutrons/sec): {self.strength:.3e}")
+        print(f" Vacuum vessel axial length: {self.vacuum_vessel_axial_length} cm")
+        print(f" Vacuum vessel outer axial length: {self.vacuum_vessel_outer_axial_length} cm")
+        print(f" Vacuum vessel central radius: {self.vacuum_vessel_central_radius} cm")
+        print(f" Throat radius: {self.throat_radius} cm")
 
 def load_source_from_yaml(yaml_file):
     """
@@ -281,6 +398,15 @@ def load_source_from_yaml(yaml_file):
     elif source_type == "2D_Varying":
         file_name = source_data['source']['source_2D']['file_name']
         return Source2D(power_output, radius, file_name).create_openmc_source()
+
+    elif source_type == "Volumetric":
+        central_cell_axial_length = source_data['source']['volumetric']['central_cell_axial_length']
+        central_cell_outer_axial_length = source_data['source']['volumetric']['central_cell_outer_axial_length']
+        central_cell_radius = source_data['source']['volumetric']['central_cell_radius']
+        throat_radius = source_data['source']['volumetric']['throat_radius']
+        z_origin = source_data['source']['volumetric'].get('z_origin', 0)
+        conical_sources = source_data['source']['volumetric'].get('conical_sources', 5)
+        return VolumetricSource(power_output, central_cell_axial_length, central_cell_outer_axial_length, central_cell_radius, throat_radius, z_origin, conical_sources).create_openmc_source()
     
     else:
         raise ValueError(f"Unsupported source type: {source_type}")

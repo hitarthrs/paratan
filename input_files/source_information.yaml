@@ -1,7 +1,10 @@
 source:
-  type: "Uniform"  # Options: "Uniform", "1D_Varying", "2D_Varying"
+  type: "Volumetric"  # Options: "Volumetric" (Default), "Uniform", "1D_Varying", "2D_Varying", "Custom"
   power_output: 10  # Power in MW
 
+  # Volumetric source settings (only used if type is "Volumetric")
+  # Uses vacuum vessel parameters from the main input file automatically
+  
   # Uniform source settings (only used if type is "Uniform")
   uniform:
     length: 250  # Length of the source region (cm)
