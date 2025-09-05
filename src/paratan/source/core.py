@@ -178,27 +178,28 @@ class Source:
 
 # Subclass for a uniform cylindrical neutron source
 class UniformSource(Source):
-    def __init__(self, power_output, length, radius):
+    def __init__(self, power_output, length, radius, z_origin, energy=14.1e6):
         super().__init__(power_output)  # Initialize the parent class (calculates strength)
         self.length = length            # Axial length of the cylindrical source
         self.radius = radius            # Radial extent of the cylindrical source
-
+        self.z_origin = z_origin        # Z origin of the cylindrical source
+        self.energy = energy            # Energy of the neutron source
     def create_openmc_source(self):
         """
         Creates and returns an OpenMC neutron source object with a uniform cylindrical spatial distribution
         and a monoenergetic neutron energy (14.1 MeV).
         """
         # Uniform axial (z) distribution along cylinder length
-        z_distribution = openmc.stats.Uniform(-self.length / 2, self.length / 2)
+        z_distribution = openmc.stats.Uniform(-self.length / 2 + self.z_origin, self.length / 2 + self.z_origin)
 
         # Radial distribution following a power-law to ensure uniform distribution in the cylinder
-        r_distribution = openmc.stats.PowerLaw(0, self.radius, -2)
+        r_distribution = openmc.stats.PowerLaw(0.001, self.radius, -2)
 
         # Uniform angular distribution from 0 to 2π radians
         phi_distribution = openmc.stats.Uniform(0, 2 * np.pi)
 
         # Monoenergetic neutron energy distribution (typical fusion neutron energy)
-        energy_distribution = openmc.stats.Discrete([14.1e6], [1])
+        energy_distribution = openmc.stats.Discrete([self.energy], [1])
 
         # Initialize OpenMC independent neutron source
         source = openmc.IndependentSource()
@@ -365,6 +366,117 @@ class VolumetricSource(Source):
         print(f" Vacuum vessel outer axial length: {self.vacuum_vessel_outer_axial_length} cm")
         print(f" Vacuum vessel central radius: {self.vacuum_vessel_central_radius} cm")
         print(f" Throat radius: {self.throat_radius} cm")
+        
+class TandemVolumetricSource(Source):
+    """
+    Represents a tandem volumetric source distribution for a fusion reactor.
+    This class creates a volumetric source distribution for a fusion reactor with a tandem section.
+    The source distribution is created using the volumetric_source_approximation function.
+    """
+    def __init__(self, power_output, z_origin, end_plug_vacuum_vessel_outer_axial_length, end_plug_vacuum_vessel_central_radius, tandem_section_outer_axial_length, tandem_section_axial_length, tandem_section_central_radius, throat_radius, conical_sources=5):
+        super().__init__(power_output)  # Initialize parent class (calculates strength)
+        
+        self.z_origin_left_plug = z_origin["left_plug"]
+        self.z_origin_right_plug = z_origin["right_plug"]
+        self.z_origin_tandem_section = z_origin["tandem_section"]
+        
+        # Set the parameters for the end plug
+        self.end_plug_vacuum_vessel_outer_axial_length = end_plug_vacuum_vessel_outer_axial_length
+        self.end_plug_vacuum_vessel_central_radius = end_plug_vacuum_vessel_central_radius
+        
+        # Set the parameters for the tandem section
+        self.tandem_section_outer_axial_length = tandem_section_outer_axial_length
+        self.tandem_section_axial_length = tandem_section_axial_length
+        self.tandem_section_central_radius = tandem_section_central_radius
+        
+        # Set the parameters for the throat radius
+        self.throat_radius = throat_radius
+        
+        # Set the parameters for the conical sources
+        self.conical_sources = conical_sources
+        
+        
+
+    def create_tandem_section_source(self):
+        """Create OpenMC source for the tandem section using volumetric_source_approximation function."""
+        return volumetric_source_approximation(
+            self.tandem_section_axial_length, 
+            self.tandem_section_outer_axial_length, 
+            self.tandem_section_central_radius, 
+            self.throat_radius, 
+            self.z_origin_tandem_section, 
+            self.conical_sources
+        )
+    
+    def create_end_plug_source(self):
+        """Create end plug sources with UniformSource class for DD fusion energy."""
+        # Calculate power output from strength for end plugs (DD fusion)
+        # DD fusion energy is 2.45 MeV, so we need to adjust the power calculation
+        dd_power_output = self.strength * 2.45e6 * 1.602e-19 / (0.8 * 1e6)
+        
+        left_plug_source = UniformSource(
+            dd_power_output, 
+            self.end_plug_vacuum_vessel_outer_axial_length, 
+            self.end_plug_vacuum_vessel_central_radius, 
+            self.z_origin_left_plug, 
+            2.45e6
+        ).create_openmc_source()
+        
+        right_plug_source = UniformSource(
+            dd_power_output, 
+            self.end_plug_vacuum_vessel_outer_axial_length, 
+            self.end_plug_vacuum_vessel_central_radius, 
+            self.z_origin_right_plug, 
+            2.45e6
+        ).create_openmc_source()
+        
+        return [left_plug_source, right_plug_source]
+    
+    def create_openmc_source(self):
+        """Create the complete tandem volumetric source distribution."""
+        tandem_section_source = self.create_tandem_section_source()
+        
+        # Scale tandem section sources to 96.3% of total power
+        # The volumetric_source_approximation returns normalized sources (sum = 1.0)
+        # We need to scale them to 96.3% of the total power
+        tandem_power_fraction = 0.9630
+        for source in tandem_section_source:
+            source.strength = source.strength * tandem_power_fraction
+                
+        end_plug_sources = self.create_end_plug_source()
+        
+        left_end_plug_source = end_plug_sources[0]
+        right_end_plug_source = end_plug_sources[1]
+        
+        # Scale end plug sources to 1.85% each of total power
+        end_plug_power_fraction = 0.0185
+        left_end_plug_source.strength = left_end_plug_source.strength * end_plug_power_fraction
+        right_end_plug_source.strength = right_end_plug_source.strength * end_plug_power_fraction
+        
+        # Flatten the list to return all sources in a single list
+        all_sources = tandem_section_source + [left_end_plug_source, right_end_plug_source]
+        return all_sources
+    
+    def check_tandem_source_strength(self):
+        """Print source strengths for debugging."""
+        tandem_section_source = self.create_tandem_section_source()
+        end_plug_sources = self.create_end_plug_source()
+        
+        print(f"Tandem section source strength: {sum(s.strength for s in tandem_section_source):.3e}")
+        print(f"Left end plug source strength: {end_plug_sources[0].strength:.3e}")
+        print(f"Right end plug source strength: {end_plug_sources[1].strength:.3e}")
+    
+    def describe(self):
+        """Print description of the tandem volumetric source."""
+        print("Tandem Volumetric Source Distribution:")
+        print(f" Strength (total neutrons/sec): {self.strength:.3e}")
+        print(f" Tandem section axial length: {self.tandem_section_axial_length} cm")
+        print(f" Tandem section outer axial length: {self.tandem_section_outer_axial_length} cm")
+        print(f" Tandem section central radius: {self.tandem_section_central_radius} cm")
+        print(f" End plug outer axial length: {self.end_plug_vacuum_vessel_outer_axial_length} cm")
+        print(f" End plug central radius: {self.end_plug_vacuum_vessel_central_radius} cm")
+        print(f" Throat radius: {self.throat_radius} cm")
+
 
 def load_source_from_yaml(yaml_file):
     """

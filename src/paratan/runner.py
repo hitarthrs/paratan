@@ -27,6 +27,14 @@ def build_simple_model_only(input_file, output_directory='output'):
     # Don't call model.run() - just return the built model
     return model
 
+def build_tandem_model_only(input_file, output_directory='output'):
+    """Build the tandem model and create XML files/plots, but don't run the simulation."""
+    with open(input_file, "r") as f:
+        input_data = yaml.safe_load(f)
+
+    model = build_tandem_model_from_input(input_data, output_directory)
+    return model
+
 def run_simple_model_modular(input_file, output_directory='output'):
     """Run the simple mirror model using the modular builder."""
     with open(input_file, "r") as f:

@@ -546,6 +546,11 @@ def redefined_vacuum_vessel_region(outer_axial_length, central_axial_length, cen
     left_fw_cone = openmc.model.ZConeOneSided(x0=0.0, y0=0.0, z0= axial_midplane - ((central_radius+0.2)/np.tan(angle)+first_plane_distance), r2=(np.tan(angle))**2)
     right_fw_cone = openmc.model.ZConeOneSided(x0=0.0, y0=0.0, z0=axial_midplane + ((central_radius+0.2)/np.tan(angle)+first_plane_distance), r2=(np.tan(angle))**2, up=False)
     
+    left_cone.plane.boundary_type = 'transmission'
+    right_cone.plane.boundary_type = 'transmission'
+    left_fw_cone.plane.boundary_type = 'transmission'
+    right_fw_cone.plane.boundary_type = 'transmission'
+
     left_cone_region = -left_cone & -central_cylinder_left_plane & +left_outer_cylinder_1
     right_cone_region = -right_cone & +central_cylinder_right_plane & -right_outer_cylinder_2
     

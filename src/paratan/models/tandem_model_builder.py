@@ -1146,92 +1146,6 @@ class TandemMachineBuilder:
         return nwl_model, fwarmor_zplanes
     
 
-# def build_tandem_model_from_input(input_data):
-#     # Parse geometry params
-#     vv_params, fw_params, cyl_params, lf_coil_params, hf_coil_params, end_cell_params = parse_machine_input(input_data, m)
-
-#     # Build machine
-#     builder = TandemMachineBuilder(
-#         vv_params, fw_params, cyl_params,
-#         lf_coil_params, hf_coil_params, end_cell_params,
-#         material_ns=m
-#     )
-#     builder.build_vacuum_vessel()
-#     builder.build_first_wall()
-#     builder.build_central_cylinders()
-#     builder.build_lf_coils()
-#     builder.build_hf_coils()
-#     builder.build_end_cells()
-
-#     # Geometry and universe
-#     universe_machine = builder.get_universe()
-#     geometry = openmc.Geometry([openmc.Cell(fill=universe_machine)])
-#     geometry.merge_surfaces = True
-
-#     # Optional: Plot geometry
-#     geometry.root_universe.plot(
-#         basis='xz',
-#         width=(1000, 5100),
-#         pixels=(1000, 1200),
-#         color_by='material'
-#     )
-#     plt.savefig('modular_tandem_mirror_cross_section.png', bbox_inches="tight")
-
-#     # Tallies
-#     tallies = openmc.Tallies(builder.get_all_tallies())
-
-#     # Materials
-#     materials = m.materials
-
-#     # Load source config
-#     with open('input_files/source_information.yaml', 'r') as f:
-#         source_data = yaml.safe_load(f)
-
-#     # Source
-#     source = openmc.Source()
-#     source.space = openmc.stats.CylindricalIndependent(
-#         r=openmc.stats.Discrete([0], [1.0]),
-#         phi=openmc.stats.Uniform(a=0.0, b=2 * np.pi),
-#         z=openmc.stats.Uniform(a=-600.0, b=600.0),
-#     )
-#     source.angle = openmc.stats.Isotropic()
-#     source.energy = openmc.stats.Discrete([14e6], [1.0])
-
-#     # Settings
-#     settings = openmc.Settings()
-#     settings.run_mode = "fixed source"
-#     settings.particles = int(source_data['settings']['particles_per_batch'])
-#     settings.batches = source_data['settings']['batches']
-#     settings.output = {'tallies': False}
-
-#     freq = source_data['settings']['statepoint_frequency']
-#     settings.statepoint = {
-#         'batches': [1] + list(range(freq, settings.batches, freq)) + [settings.batches]
-#     }
-
-#     settings.weight_windows_on = source_data['settings']['weight_windows']
-#     settings.weight_window_checkpoints = {'collision': True, 'surface': True}
-
-#     wwg = openmc.WeightWindowGenerator(
-#         openmc.RegularMesh(),
-#         energy_bounds=[0, 14e6],
-#         particle_type='neutron',
-#         method='magic',
-#         max_realizations=25,
-#         update_interval=1,
-#         on_the_fly=True
-#     )
-#     settings.weight_windows_generator = [wwg]
-
-#     settings.photon_transport = source_data['settings']['photon_transport']
-#     settings.source = source
-
-#     # Final model
-#     model = openmc.Model(geometry, materials, settings, tallies)
-#     model.export_to_xml('model_xml_files')
-
-#     return model
-
 import os
 import contextlib
 
@@ -1261,7 +1175,7 @@ def build_tandem_model_from_input(input_data, output_dir="."):
         builder.build_central_cylinders()
         builder.build_lf_coils()
         builder.build_hf_coils()
-        # builder.build_end_cells()
+        builder.build_end_cells()
 
         # Geometry and universe
         universe_machine = builder.get_universe()
@@ -1291,16 +1205,89 @@ def build_tandem_model_from_input(input_data, output_dir="."):
         source_z_end = source_data["source"]["uniform"]["length"]/2
 
         source_r = source_data["source"]["uniform"]["radius"]
+        
+        # Create source based on type
+        source_type = source_data['source']['type']
+        power_output = source_data['source']['power_output']
+        
+        # if source_type == "Volumetric":
+        #     # Volumetric source using vacuum vessel parameters
+        #     from src.paratan.source.core import VolumetricSource
+        #     source = VolumetricSource(
+        #         power_output=power_output,
+        #         vacuum_vessel_axial_length=builder.vv_params["central_cell_vv_parameters"].central_axis_length,
+        #         vacuum_vessel_outer_axial_length=builder.vv_params["central_cell_vv_parameters"].outer_length,
+        #         vacuum_vessel_central_radius=builder.vv_params["central_cell_vv_parameters"].radius,
+        #         throat_radius=builder.vv_params["bottleneck_radius"],
+        #         z_origin=0.0,  # Central cell is at z=0
+        #         conical_sources=5
+        #     ).create_openmc_source()
+            
+        if source_type == "TandemVolumetric":
+            # Tandem volumetric source with separate sources for central cell and end plugs
+            from src.paratan.source.core import TandemVolumetricSource
+            
+            # Calculate z origins for each section
+            central_cell_length = builder.vv_params["central_cell_vv_parameters"].central_axis_length
+            end_plug_length = builder.vv_params["end_plug_vv_parameters"].central_axis_length
+            separation = builder.vv_params["central_cell_end_plug_separation_distance"]
+            
+            right_midplane = central_cell_length/2 + separation + end_plug_length/2
+            left_midplane = -right_midplane
+            
+            z_origin = {
+                "tandem_section": 0.0,  # Central cell
+                "left_plug": left_midplane,
+                "right_plug": right_midplane
+            }
+            
+            source = TandemVolumetricSource(
+                power_output=power_output,
+                z_origin=z_origin,
+                end_plug_vacuum_vessel_outer_axial_length=builder.vv_params["end_plug_vv_parameters"].outer_length,
+                end_plug_vacuum_vessel_central_radius=builder.vv_params["end_plug_vv_parameters"].radius,
+                tandem_section_outer_axial_length=builder.vv_params["central_cell_vv_parameters"].outer_length,
+                tandem_section_axial_length=builder.vv_params["central_cell_vv_parameters"].central_axis_length,
+                tandem_section_central_radius=builder.vv_params["central_cell_vv_parameters"].radius,
+                throat_radius=builder.vv_params["bottleneck_radius"],
+                conical_sources=5
+            ).create_openmc_source()
+            
+        elif source_type == "Uniform":
+            # Uniform cylindrical source
+            from src.paratan.source.core import UniformSource
+            length = source_data['source']['uniform']['length']
+            radius = source_data['source']['uniform']['radius']
+            source = UniformSource(power_output, length, radius, z_origin=0.0).create_openmc_source()
+            
+        elif source_type == "1D_Varying":
+            # 1D varying source from file
+            from src.paratan.source.core import Source1D
+            file_name = source_data['source']['source_1D']['file_name']
+            radius = source_data['source']['source_1D']['radius']
+            source = Source1D(power_output, radius, file_name).create_openmc_source()
+            
+        elif source_type == "2D_Varying":
+            # 2D varying source from file
+            from src.paratan.source.core import Source2D
+            file_name = source_data['source']['source_2D']['file_name']
+            source = Source2D(power_output, file_name).create_openmc_source()
+            
+        elif source_type == "Custom":
+            # Custom source - handle later
+            print("Custom source type not yet implemented")
+            # Fallback to default source
+            source = openmc.Source()
+            source.space = openmc.stats.CylindricalIndependent(
+                r=openmc.stats.Discrete([0], [1.0]),
+                phi=openmc.stats.Uniform(a=0.0, b=2 * np.pi),
+                z=openmc.stats.Uniform(a=-600.0, b=600.0),
+            )
+            source.angle = openmc.stats.Isotropic()
+            source.energy = openmc.stats.Discrete([14e6], [1.0])
+        else:
+            raise ValueError(f"Unsupported source type: {source_type}")
 
-        # Source
-        source = openmc.Source()
-        source.space = openmc.stats.CylindricalIndependent(
-            r=openmc.stats.PowerLaw(a = 0.0, b = source_r, n = 2),
-            phi=openmc.stats.Uniform(a=0.0, b=2 * np.pi),
-            z=openmc.stats.Uniform(a=source_z_start, b=source_z_end),
-        )
-        source.angle = openmc.stats.Isotropic()
-        source.energy = openmc.stats.Discrete([14e6], [1.0])
 
         # Settings
         settings = openmc.Settings()
@@ -1327,6 +1314,7 @@ def build_tandem_model_from_input(input_data, output_dir="."):
             on_the_fly=True
         )
         settings.weight_windows_generator = [wwg]
+        
 
         settings.photon_transport = source_data['settings']['photon_transport']
         settings.source = source
@@ -1336,4 +1324,3 @@ def build_tandem_model_from_input(input_data, output_dir="."):
         model.export_to_xml('model_xml_files')
 
     return model
-

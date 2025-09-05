@@ -1,7 +1,11 @@
 import openmc
 import numpy as np
 import matplotlib.pyplot as plt
+
+# Materials library that is used to build the model. To channge materials, import other directory as m
+
 from src.paratan.materials import material as m
+
 from src.paratan.geometry.core import *
 from src.paratan.source.core import *
 from src.paratan.tallies.base_tallies import hollow_mesh_from_domain, strings_to_openmc_filters
@@ -768,6 +772,13 @@ def build_simple_model_from_input(input_data, output_dir="."):
     Build a complete simple mirror model from input parameters.
     Returns a complete OpenMC model ready to run.
     """
+    # Create output directory if it doesn't exist
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Calculate the source file path BEFORE changing directories
+    # The output_dir is now the config directory itself, so source file is in the same directory
+    source_file_path = os.path.abspath(os.path.join(output_dir, 'source_information.yaml'))
+    
     with change_dir(output_dir):
         # Parse input parameters
         vv_params, cc_params, lf_params, hf_params, end_params = parse_simple_machine_input(input_data, m)
@@ -806,7 +817,7 @@ def build_simple_model_from_input(input_data, output_dir="."):
         geometry.root_universe.plot(
             basis='xz',
             width=(1000, 2800),
-            pixels=(700, 700),
+            pixels=(2400, 4000),
             color_by='material'
         )
         plt.savefig('simple_mirror_modular_cross_section.png', bbox_inches="tight")
@@ -822,7 +833,9 @@ def build_simple_model_from_input(input_data, output_dir="."):
         materials = m.materials
 
         # Load source configuration
-        with open('source_information.yaml', 'r') as f:
+        # Use the source_file_path calculated before changing directories
+        
+        with open(source_file_path, 'r') as f:
             source_data = yaml.safe_load(f)
 
         # Create source based on type
