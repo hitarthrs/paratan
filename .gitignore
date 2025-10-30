@@ -63,6 +63,14 @@ make_source_files_tbr.py
 
 paratan
 
-
+# Allow images in examples/
+!examples/**/*.png
+!examples/**/*.jpg
+!examples/**/*.jpeg
+!examples/**/*.svg
+!examples/**/*.gif
+!examples/**/*.pdf
+!examples/**/*.eps
+!examples/**/*.ps
 
 
