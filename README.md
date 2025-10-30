@@ -2,6 +2,16 @@
 
 **Paratan** is a lightweight OpenMC wrapper designed for rapid parametric modeling of tandem mirror fusion devices. It simplifies geometry construction, material assignment, and source specification, enabling easy setup and iteration of neutronics simulations. Built for early-stage design and analysis, **Paratan** helps researchers and engineers explore design spaces efficiently.
 
+## Example Schematics
+
+Example Simple mirror cross-section:
+
+<img src="examples/processed/simple_mirror_cross_section_rotated.png" alt="Simple mirror model schematic" width="600" />
+
+Example Tandem mirror cross-section:
+
+<img src="examples/processed/tandem_mirror_cross_section_rotated.png" alt="Tandem mirror model schematic" width="600" />
+
 # 🐳 Setting Up the Environment with Docker
 
 This project includes a Dockerfile to ensure a consistent and reproducible development environment across different systems.
@@ -104,6 +114,8 @@ The source input file defines how neutrons are introduced into the system. It su
 ### Source Types
 
 **Volumetric (Default)** – Automatically approximates the vacuum vessel shape using a series of cylinders with relative strengths set according to the vessel geometry. This is the recommended source type for most fusion device simulations.
+
+**TandemVolumetric** – Specialized source for tandem mirror configurations. Creates separate sources for the central cell (DT fusion, 14.1 MeV) and end plugs (DD fusion, 2.45 MeV) with appropriate power distribution. Recommended for tandem mirror simulations.
 
 **Uniform** – A constant neutron generation rate within a cylindrical region. Requires:
 
