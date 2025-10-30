@@ -1,8 +1,12 @@
 source:
-  type: "Volumetric"  # Options: "Volumetric" (Default), "Uniform", "1D_Varying", "2D_Varying", "Custom"
+  type: "TandemVolumetric"  # Options: "Volumetric" (Default), "TandemVolumetric", "Uniform", "1D_Varying", "2D_Varying", "Custom"
   power_output: 10  # Power in MW
 
   # Volumetric source settings (only used if type is "Volumetric")
+  # Uses vacuum vessel parameters from the main input file automatically
+  
+  # TandemVolumetric source settings (only used if type is "TandemVolumetric")
+  # Creates separate sources for central cell (DT fusion, 14.1 MeV) and end plugs (DD fusion, 2.45 MeV)
   # Uses vacuum vessel parameters from the main input file automatically
   
   # Uniform source settings (only used if type is "Uniform")

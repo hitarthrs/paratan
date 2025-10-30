@@ -8,8 +8,8 @@ vacuum_vessel:
   central_axial_length: 600  # Total axial length of central cylindrical section (cm)
   central_radius: 75  # Radius of central cylindrical section (cm)
   bottleneck_radius: 25.0  # Radius of outer bottleneck cylindrical section (cm)
-  left_bottleneck_length: 300  # Axial length of left bottleneck section (cm)
-  right_bottleneck_length: 300  # Axial length of right bottleneck section (cm)
+  left_bottleneck_length: 350  # Axial length of left bottleneck section (cm)
+  right_bottleneck_length: 350  # Axial length of right bottleneck section (cm)
   axial_midplane: 0.0  # Z-coordinate of midplane (cm)
   
   # Structural layers (optional - can be added later)

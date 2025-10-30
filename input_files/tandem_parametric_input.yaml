@@ -39,7 +39,7 @@ central_cell:
     axial_length: 650
     layers:
       - thickness: 95
-        material: enriched_lithium  # Breeding Blanket
+        material: eutectic_breeding_material  # Breeding Blanket
       - thickness: 2
         material: BW_FNSF  # Back Wall
       - thickness: 30
@@ -115,7 +115,7 @@ end_plug:
     axial_length: 360
     layers:
       - thickness: 75
-        material: air  # Breeding Blanket
+        material: vacuum  # Breeding Blanket
       - thickness: 5
         material: BW_FNSF  # Back Wall
       - thickness: 20
