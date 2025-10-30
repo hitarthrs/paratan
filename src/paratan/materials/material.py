@@ -216,7 +216,7 @@ rafm_steel.add_nuclide('W186', 3.3589e-03, 'wo')
 cooled_rafm_steel = openmc.Material.mix_materials([rafm_steel, water], [0.8, 0.20], 'vo')
 cooled_rafm_steel.add_s_alpha_beta('c_H_in_H2O', 0.66666*0.2)
 
-enrichment_li6 = 0.15
+enrichment_li6 = 0.30
 enrichment_li7 = 1- enrichment_li6
 
 LiPb_density = 9965
@@ -508,23 +508,38 @@ Magnet_Winding_Pack = openmc.Material.mix_materials([rebco, hastelloy, copper], 
 
 breeder_struct = 0.05
 eutectic_breeding_material = openmc.Material.mix_materials([he_cooled_rafm, LiPb_breeder], [breeder_struct, 1-breeder_struct], 'vo', name= 'PbLi Breeder with Structure')
+dcll_enriched_lithium_breeding_material = openmc.Material.mix_materials([he_cooled_rafm, enriched_lithium], [breeder_struct, 1-breeder_struct], 'vo', name= 'Li Breeder with Structure')
 
 FW_FNSF = openmc.Material.mix_materials([helium_8mpa, rafm_steel], [0.6, 0.4], 'vo', name = "First Wall")
 BW_FNSF = openmc.Material.mix_materials([helium_8mpa, rafm_steel], [0.2, 0.8], 'vo', name = "Back Wall")
 
 he_manifold = openmc.Material.mix_materials([helium_8mpa, rafm_steel], [0.7, 0.3], 'vo', name = "Helium Manifold")
 
+shield_coolant_percent = 0.001
+
+cooled_wb_shield = openmc.Material.mix_materials([tungsten_boride, water], [1-shield_coolant_percent, shield_coolant_percent], 'vo')
+cooled_wb_shield.add_s_alpha_beta('c_H_in_H2O', 0.66666*shield_coolant_percent)
+
+cooled_wb2_shield = openmc.Material.mix_materials([WB2, water], [1-shield_coolant_percent, shield_coolant_percent], 'vo')
+cooled_wb2_shield.add_s_alpha_beta('c_H_in_H2O', 0.66666*shield_coolant_percent)
+
+cooled_w2b5_shield = openmc.Material.mix_materials([w2b5, water], [1-shield_coolant_percent, shield_coolant_percent], 'vo')
+cooled_w2b5_shield.add_s_alpha_beta('c_H_in_H2O', 0.66666*shield_coolant_percent)
+
+cooled_wc_shield = openmc.Material.mix_materials([tungsten_carbide, water], [1-shield_coolant_percent, shield_coolant_percent], 'vo')
+cooled_wc_shield.add_s_alpha_beta('c_H_in_H2O', 0.66666*shield_coolant_percent)
+
 Magnet_Winding_Pack_2 = openmc.Material.mix_materials([copper, silver, rebco, lamno3, MgO, yttrium_oxide, alumina, hastelloy], [0.1312508, 0.05250033, 0.02625016, 0.000525, 0.00131251, 0.00013125, 0.000525, 0.7875049], 'vo', name='Magnet Winding Pack 2.0')
 
 materials_list = [vacuum, air, deuterium, aluminum_6061, stainless, beryllium, lead, LiH, LiD,
                   rebco, magnet, tungsten, crispy, water, he_cooled_rafm, iron, lithium,
                   cooled_tungsten, tungsten_carbide, cooled_tungsten_carbide,
-                  rafm_steel, LiPb_breeder, rings, tungsten_boride, WB2, w2b5, cooled_w2b5, cooled_wb2,
+                  rafm_steel, LiPb_breeder, rings, tungsten_boride, WB2, w2b5, cooled_w2b5,
                   TiH2, cooled_TiH2, zirconium_hydride, water_cooled_wc, copper, hastelloy, flibe, tantalum,
                   tantalum_hydride_55, tantalum_hydride_30, cooled_rafm_steel, Nak_77, potassium, KCl,
                   HfH2, titanium, MgO, MgO_HfH2, Fe_HfH2_WB2, Ti_HfH2, B4C, enriched_lithium, lithium_metatitanate, lithium_orthosilicate, he_cooled_tungsten_carbide
                   ,VV_Filler, concrete, lamno3, alumina, yttrium_oxide, silver, HT_Shield_filler, LT_Shield_filler, Magnet_Winding_Pack, FW_FNSF, BW_FNSF, he_manifold, eutectic_breeding_material
-                  ,cooled_stainless, Magnet_Winding_Pack_2, aluminum_1050, ss316ln, cooled_tungsten_boride, cooled_B4C]
+                  ,cooled_stainless, Magnet_Winding_Pack_2, aluminum_1050, ss316ln, cooled_tungsten_boride, cooled_B4C, dcll_enriched_lithium_breeding_material, cooled_wb2, cooled_wb_shield, cooled_wb2_shield, cooled_w2b5_shield, cooled_wc_shield]
 
 for material in materials_list:
     material.depletable = True

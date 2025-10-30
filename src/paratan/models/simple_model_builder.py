@@ -2,9 +2,8 @@ import openmc
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Materials library that is used to build the model. To channge materials, import other directory as m
-
-from src.paratan.materials import material as m
+# Materials library that is used to build the model. To change materials, use --materials flag in CLI
+# Materials will be loaded dynamically in the build function
 
 from src.paratan.geometry.core import *
 from src.paratan.source.core import *
@@ -14,6 +13,25 @@ import yaml
 import os
 import contextlib
 from types import SimpleNamespace
+
+
+def load_materials():
+    """Load materials module based on environment variable or default."""
+    import os
+    if 'MATERIALS_PATH' in os.environ:
+        # Import custom materials module specified by environment variable
+        import importlib.util
+        import sys
+        materials_path = os.environ['MATERIALS_PATH']
+        spec = importlib.util.spec_from_file_location("custom_materials", materials_path)
+        m = importlib.util.module_from_spec(spec)
+        sys.modules["custom_materials"] = m
+        spec.loader.exec_module(m)
+        return m
+    else:
+        # Use default materials
+        from src.paratan.materials import material as m
+        return m
 
 
 def parse_simple_machine_input(input_data, material_ns):
@@ -772,12 +790,8 @@ def build_simple_model_from_input(input_data, output_dir="."):
     Build a complete simple mirror model from input parameters.
     Returns a complete OpenMC model ready to run.
     """
-    # Create output directory if it doesn't exist
-    os.makedirs(output_dir, exist_ok=True)
-    
-    # Calculate the source file path BEFORE changing directories
-    # The output_dir is now the config directory itself, so source file is in the same directory
-    source_file_path = os.path.abspath(os.path.join(output_dir, 'source_information.yaml'))
+    # Load materials dynamically based on environment variable
+    m = load_materials()
     
     with change_dir(output_dir):
         # Parse input parameters
@@ -833,9 +847,7 @@ def build_simple_model_from_input(input_data, output_dir="."):
         materials = m.materials
 
         # Load source configuration
-        # Use the source_file_path calculated before changing directories
-        
-        with open(source_file_path, 'r') as f:
+        with open('source_information.yaml', 'r') as f:
             source_data = yaml.safe_load(f)
 
         # Create source based on type

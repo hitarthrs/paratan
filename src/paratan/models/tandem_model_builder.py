@@ -618,6 +618,8 @@ class HFCoilBuilder:
                     layer_back_thickness=casing_thicknesses,
                     layer_axial_thickness=casing_thicknesses
                 )
+                
+                print(f"The number of casing regions including the magnet is {len(casing_regions)}.")
 
                 magnet_region = casing_regions[0]
                 magnet_cell = openmc.Cell(
@@ -639,8 +641,8 @@ class HFCoilBuilder:
                     "cell_tallies": self.coil_data.get(key, {}).get("tallies", {}).get("cell_tallies", []),
                     "mesh_tallies": self.coil_data.get(key, {}).get("tallies", {}).get("mesh_tallies", [])
                 })
-
-                for j, region in enumerate(casing_regions[1:-1]):
+                
+                for j, region in enumerate(casing_regions[1:]):
                     casing_cell = openmc.Cell(
                         cell_id=6500 + i * 10 + j,
                         region=region,
@@ -731,7 +733,7 @@ class EndCellBuilder:
                 + casing_sum
                 + magnet_half
                 + shell_thickness
-                + axial_length / 2
+                + axial_length / 2 +5
             )
 
             self._get_outer_limits[key] = z0 + axial_length / 2 + shell_thickness + 75
