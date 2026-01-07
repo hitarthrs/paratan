@@ -1,0 +1,34 @@
+name: paratan
+channels:
+  - conda-forge
+channel_priority: strict
+dependencies:
+  - python=3.11
+  - pip
+
+  # ---- OpenMC (DAGMC-enabled) ----
+  # Use the DAGMC build (nompi is simplest to start with)
+  - openmc=0.15.3=dagmc_nompi_py311*
+
+  # ---- DAGMC stack (explicit, even if pulled transitively) ----
+  - dagmc
+  - moab
+
+  # ---- Your Python libs from Dockerfile ----
+  - pyyaml
+  - h5py
+  - hdf5
+  - matplotlib
+  - ipython
+  - notebook
+  - netcdf4
+  - vtk
+  - progress
+
+  # ---- PyNE (instead of the bash installer script) ----
+  #- pyne
+
+  # ---- pip-only bits you had ----
+  - pip:
+      - openmc-data-downloader
+
