@@ -73,4 +73,12 @@ paratan
 !examples/**/*.eps
 !examples/**/*.ps
 
+spatial_emulator_data/
+spatial_emulator_data_100_100/
+spatial_emulator_data_100_100_iteration_2/
 
+tandem_blanket_study_rafm_structure/
+tandem_blanket_study/
+
+final_tandem_mirror_tbr_study/
+final_simple_mirror_radial_shielding_study/
