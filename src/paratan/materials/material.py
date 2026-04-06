@@ -216,7 +216,12 @@ rafm_steel.add_nuclide('W186', 3.3589e-03, 'wo')
 cooled_rafm_steel = openmc.Material.mix_materials([rafm_steel, water], [0.8, 0.20], 'vo')
 cooled_rafm_steel.add_s_alpha_beta('c_H_in_H2O', 0.66666*0.2)
 
-enrichment_li6 = 0.30
+# Beryllide Titanate (Be12Ti)
+be12ti = openmc.Material(name='Beryllide Titanate: Be12Ti')
+be12ti.add_elements_from_formula('Be12Ti')
+be12ti.set_density('g/cm3', 2.26)
+
+enrichment_li6 = 0.90
 enrichment_li7 = 1- enrichment_li6
 
 LiPb_density = 9965
@@ -267,6 +272,22 @@ concrete.add_element('Fe', 0.014000, percent_type='wo')  # Z = 26, 1.40%
 
 # Set the density (in g/cm^3)
 concrete.set_density('g/cm3', 2.3)
+
+# V-4Cr-4Ti Reference Alloy (Normalized to 100.0)
+v44 = openmc.Material(name='V-4Cr-4Ti Alloy')
+# Composition source:  Sparks, T., Nguyen-Manh, D., Zheng, P., Wróbel, J. S., Sobieraj, D., Gorley, M., Connolley, T., Reinhard, C., Wang, Y., & Cai, B. (2022). Mechanical characterisation of V-4Cr-4Ti alloy: Tensile tests under high energy synchrotron diffraction. 
+# Journal of Nuclear Materials, 569, 153911. https://doi.org/10.1016/j.jnucmat.2022.153911
+# Impurities
+v44.add_element('Si', 0.059, 'wo') 
+v44.add_element('O',  0.027, 'wo') 
+v44.add_element('C',  0.013, 'wo') 
+# Alloying Elements
+v44.add_element('Cr', 3.81, 'wo')
+v44.add_element('Ti', 3.92, 'wo')
+# Vanadium for the rest
+v44.add_element('V', 92.171, 'wo')
+# Source: QED Fusion Physical Properties Database (Mike Billone, ANL); URL: https://qedfusion.org/LIB/PROPS/vprop.html
+v44.set_density('g/cm3', 6.05)
 
 he_cooled_rafm = openmc.Material.mix_materials([helium_8mpa, rafm_steel], [0.6, 0.4], 'vo')
 #print(he_cooled_rafm.density)
@@ -403,6 +424,18 @@ enriched_lithium.add_element('Li', 1.0, enrichment=enrichment_li6*100, enrichmen
 #enriched_lithium.add_nuclide(li7, 1-enrichment_li6, 'ao')
 enriched_lithium.temperature = 900
 
+
+molar_mass_li_enriched = (enrichment_li6 * 6.015) + (enrichment_li7 * 6.941)
+molar_mass_flibe_enriched = (2 * molar_mass_li_enriched) + 9.012 + (4 * 18.998) # Be, F4, and Li2
+natural_molar_mass_flibe = 99.03
+enriched_flibe_density = 1.94*(molar_mass_flibe_enriched/natural_molar_mass_flibe)
+
+enriched_flibe = openmc.Material(name='Enriched Flibe')
+enriched_flibe.set_density("g/cm3", enriched_flibe_density)
+enriched_flibe.add_element('Li', 2.0, enrichment=enrichment_li6*100, enrichment_target='Li6', enrichment_type='ao')
+enriched_flibe.add_element('Be', 1.0)
+enriched_flibe.add_element('F', 4.0)
+
 HfH2 = openmc.Material(name="Hafnium hydride HfH2")
 HfH2.set_density("g/cm3", 11.36)
 HfH2.add_elements_from_formula("HfH2")
@@ -426,7 +459,7 @@ lithium_metatitanate.add_element('O', 3, 'ao')
 #lithium_metatitanate.temperature = 500
 
 lithium_orthosilicate = openmc.Material(name="Lithium orthosilicate")
-lithium_orthosilicate.set_density("g/cm3", packing_fraction_pebbles*2.39)
+lithium_orthosilicate.set_density("g/cm3", 2.39)
 lithium_orthosilicate.add_nuclide(li6, 4 * enrichment_li6 , 'ao')
 lithium_orthosilicate.add_nuclide(li7, 4 * enrichment_li7 , 'ao')
 lithium_orthosilicate.add_element('Si', 1, 'ao')
@@ -507,8 +540,41 @@ VV_Filler = openmc.Material.mix_materials([tungsten_carbide, helium_8mpa, rafm_s
 Magnet_Winding_Pack = openmc.Material.mix_materials([rebco, hastelloy, copper], [0.03, 0.47, 0.50], 'vo', name = "Winding Pack")
 
 breeder_struct = 0.05
-eutectic_breeding_material = openmc.Material.mix_materials([he_cooled_rafm, LiPb_breeder], [breeder_struct, 1-breeder_struct], 'vo', name= 'PbLi Breeder with Structure')
-dcll_enriched_lithium_breeding_material = openmc.Material.mix_materials([he_cooled_rafm, enriched_lithium], [breeder_struct, 1-breeder_struct], 'vo', name= 'Li Breeder with Structure')
+#eutectic_breeding_material = openmc.Material.mix_materials([he_cooled_rafm, LiPb_breeder], [breeder_struct, 1-breeder_struct], 'vo', name= 'PbLi Breeder with Structure')
+#dcll_enriched_lithium_breeding_material = openmc.Material.mix_materials([he_cooled_rafm, enriched_lithium], [breeder_struct, 1-breeder_struct], 'vo', name= 'Li Breeder with Structure')
+# Placeholder rafm confiration for tbr parametric study
+#flibe_breeding_material = openmc.Material.mix_materials([he_cooled_rafm, enriched_flibe], [breeder_struct, 1-breeder_struct], 'vo', name= 'Flibe Breeder with RAFM Structure')
+#hcpb_breeding_material = openmc.Material.mix_materials([he_cooled_rafm, lithium_orthosilicate, helium_8mpa], [breeder_struct, 0.63*(1-breeder_struct), 0.37*(1-breeder_struct)], 'vo', name= 'HCPB Breeder with RAFM Structure')
+
+
+# Typical Blanket configurations
+flibe_breeding_material = openmc.Material.mix_materials([v44, enriched_flibe], [0.17, 0.83], 'vo', name= 'Flibe Breeder with Structure')
+
+# From Gilbert et. al. 2017
+eutectic_breeding_material = openmc.Material.mix_materials([rafm_steel, helium_8mpa, LiPb_breeder], [0.13, 0.09, 0.78], 'vo', name= 'PbLi Breeder with RAFM Structure')
+
+# From the infinity two study by Clark et al.
+dcll_enriched_lithium_breeding_material = openmc.Material.mix_materials([v44, enriched_lithium], [0.1, 0.90], 'vo', name= 'Self-Cooled Lithium Vanadium Breeder with Structure')
+
+# Typical HCPB Blanket
+solid_pebble_mix = openmc.Material.mix_materials(
+    [be12ti, lithium_orthosilicate], 
+    [0.8, 0.2], 
+    'vo'
+)
+
+# Account for the packing fraction
+packing_fraction_pebbles = 0.63
+pebble_bed = openmc.Material.mix_materials([solid_pebble_mix, helium_8mpa], [packing_fraction_pebbles, 1-packing_fraction_pebbles], 'vo', name= 'HCPB Pebble Bed')
+
+# According to Shimwell Table 1, the Bed occupies 85% of the total volume
+# (53.55% pebbles + 31.45% purge = 85.0%)
+hcpb_breeding_material = openmc.Material.mix_materials(
+    [rafm_steel, helium_8mpa, pebble_bed],
+   [0.09705, 0.05295, 0.850],
+   'vo',
+   name='HCPB Breeder with Structure (Shimwell2016)'
+)
 
 FW_FNSF = openmc.Material.mix_materials([helium_8mpa, rafm_steel], [0.6, 0.4], 'vo', name = "First Wall")
 BW_FNSF = openmc.Material.mix_materials([helium_8mpa, rafm_steel], [0.2, 0.8], 'vo', name = "Back Wall")
@@ -529,7 +595,10 @@ cooled_w2b5_shield.add_s_alpha_beta('c_H_in_H2O', 0.66666*shield_coolant_percent
 cooled_wc_shield = openmc.Material.mix_materials([tungsten_carbide, water], [1-shield_coolant_percent, shield_coolant_percent], 'vo')
 cooled_wc_shield.add_s_alpha_beta('c_H_in_H2O', 0.66666*shield_coolant_percent)
 
-Magnet_Winding_Pack_2 = openmc.Material.mix_materials([copper, silver, rebco, lamno3, MgO, yttrium_oxide, alumina, hastelloy], [0.1312508, 0.05250033, 0.02625016, 0.000525, 0.00131251, 0.00013125, 0.000525, 0.7875049], 'vo', name='Magnet Winding Pack 2.0')
+rebco_tape = openmc.Material.mix_materials([copper, silver, rebco, lamno3, MgO, yttrium_oxide, alumina, hastelloy], [0.1312508, 0.05250033, 0.02625016, 0.000525, 0.00131251, 0.00013125, 0.000525, 0.7875049], 'vo', name='REBCO Tape')
+rebco_tape.id = 125
+
+Magnet_Winding_Pack_2 = openmc.Material.mix_materials([rebco_tape, copper, stainless], [0.08, 0.459, 0.461], 'vo', name='Magnet Winding Pack 2.0')
 
 materials_list = [vacuum, air, deuterium, aluminum_6061, stainless, beryllium, lead, LiH, LiD,
                   rebco, magnet, tungsten, crispy, water, he_cooled_rafm, iron, lithium,
@@ -539,7 +608,7 @@ materials_list = [vacuum, air, deuterium, aluminum_6061, stainless, beryllium, l
                   tantalum_hydride_55, tantalum_hydride_30, cooled_rafm_steel, Nak_77, potassium, KCl,
                   HfH2, titanium, MgO, MgO_HfH2, Fe_HfH2_WB2, Ti_HfH2, B4C, enriched_lithium, lithium_metatitanate, lithium_orthosilicate, he_cooled_tungsten_carbide
                   ,VV_Filler, concrete, lamno3, alumina, yttrium_oxide, silver, HT_Shield_filler, LT_Shield_filler, Magnet_Winding_Pack, FW_FNSF, BW_FNSF, he_manifold, eutectic_breeding_material
-                  ,cooled_stainless, Magnet_Winding_Pack_2, aluminum_1050, ss316ln, cooled_tungsten_boride, cooled_B4C, dcll_enriched_lithium_breeding_material, cooled_wb2, cooled_wb_shield, cooled_wb2_shield, cooled_w2b5_shield, cooled_wc_shield]
+                  ,cooled_stainless, rebco_tape, Magnet_Winding_Pack_2, aluminum_1050, ss316ln, cooled_tungsten_boride, cooled_B4C, dcll_enriched_lithium_breeding_material, cooled_wb2, cooled_wb_shield, cooled_wb2_shield, cooled_w2b5_shield, cooled_wc_shield, flibe_breeding_material, hcpb_breeding_material]
 
 for material in materials_list:
     material.depletable = True

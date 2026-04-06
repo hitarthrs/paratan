@@ -424,6 +424,7 @@ room_region &= ~left_end_cell_shell & ~left_end_cell_inner
 room_region &= ~right_end_cell_shell & ~right_end_cell_inner
 
 
+
 # ________________________________________ FINALIZE MODEL CROSS-SECTION ________________________________________ #
 
 # Create the OpenMC geometry with the machine universe as the root

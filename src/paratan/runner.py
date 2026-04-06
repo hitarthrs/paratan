@@ -8,7 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 #from paratan.models.simple import build_simple_mirror
 from src.paratan.models.tandem_model_builder import build_tandem_model_from_input
-from src.paratan.models.simple_model_builder import build_simple_model_from_input
+from src.paratan.models.simple_model_builder_ports import build_simple_model_from_input
 import src.paratan.materials.material as m
 
 # def run_simple_model(input_file):
