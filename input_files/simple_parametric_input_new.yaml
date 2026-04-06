@@ -180,3 +180,9 @@ end_cell:
 # 5. Add end cells
 # 6. Re-enable tallies one by one
 #
+ports:
+  ports_present: True
+  inner_radius: 25
+  port_layers_thicknesses: [2, 5]
+  port_layers_materials: [water_cooled_wc, Magnet_Winding_Pack_2]
+  port_x_limits: 250
