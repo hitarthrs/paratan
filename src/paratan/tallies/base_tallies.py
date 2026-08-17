@@ -5,92 +5,67 @@ import openmc
 import yaml
 from src.paratan.geometry.core import *
 
-def hollow_mesh_from_domain(domain, dimensions= [10, 10, 10], phi_grid_bounds=(0.0, 2 * np.pi)):
+import numpy as np
+import pandas as pd
+import openmc
+# import parametric_input as param
+import yaml
+from src.paratan.geometry.core import *
+
+
+def _cylindrical_r_bounds(region: openmc.Region, bounding_box) -> tuple[float, float]:
+    """Return (r_min, r_max) for meshing a tally domain in cylindrical coordinates.
+
+    Uses the domain region's z-cylinder surfaces. The inner bound is the largest
+    radius strictly inside the outer shell, so subtracted voids (e.g. vacuum
+    vessel bottleneck at r=25 cm) do not shrink the mesh below the actual fill
+    annulus (e.g. breeder at 78–155 cm).
     """
-    Generate a cylindrical mesh overs a hollow region defined by an OpenMC region.
-    
-    Parameters:
-        domain (openmc.Region/ openmc.Cell): The domain to bound and mesh (not necessarily hollow).
-        dimensions (tuple): Number of divisions in (r, phi, z), i.e., (nr, nphi, nz).
-        phi_grid_bounds (tuple): Angular bounds in radians for phi. Default is (0, 2π).
-    
-    Returns:
-        openmc.CylindricalMesh: A cylindrical mesh over the hollow region.
-    """
-    # Get the bounding box of the region
-    bounding_box = domain.bounding_box
-    
-    # For cylindrical geometry, calculate max radius from the actual domain
-    # Extract all surfaces in the domain
-    if type(domain) == openmc.Cell:
-        region = domain.region
-    elif type(domain) == openmc.Region:
-        region = domain
-    
-    surfaces = region.get_surfaces()
-    
-    # Find all z-cylindrical surfaces and collect their radii
     radii = [
-        surface.coefficients['r']
-        for surface in surfaces.values()
-        if surface.type == 'z-cylinder'
+        float(surface.coefficients["r"])
+        for surface in region.get_surfaces().values()
+        if surface.type == "z-cylinder"
     ]
-    
-    # Set max radius based on largest detected cylindrical surface
     if radii:
         max_radius = max(radii)
-    else:
-        # Fallback to bounding box if no cylinders found
-        max_radius = max(
-            abs(bounding_box[0][0]),  # |x-min|
-            abs(bounding_box[0][1]),  # |y-min|
-            abs(bounding_box[1][0]),  # |x-max|
-            abs(bounding_box[1][1])   # |y-max|
-        )
-    
-    # Create outer bounding cylindrical surfaces
-    outer_cylinder = openmc.ZCylinder(r=max_radius)
-    lower_z = openmc.ZPlane(bounding_box[0][2])
-    upper_z = openmc.ZPlane(bounding_box[1][2])
-    
-    outer_region = -outer_cylinder & +lower_z & -upper_z
+        inner_candidates = [r for r in radii if r < max_radius - 1e-9]
+        min_radius = max(inner_candidates) if inner_candidates else 0.0
+        return min_radius, max_radius
+
+    max_radius = max(
+        abs(bounding_box[0][0]),
+        abs(bounding_box[0][1]),
+        abs(bounding_box[1][0]),
+        abs(bounding_box[1][1]),
+    )
+    return 0.0, max_radius
 
 
-    
-    # Subtract the original region to define hollow space
-    hollow_region = outer_region & ~region
-    
-    # Extract all surfaces in the resulting region
-    surfaces = hollow_region.get_surfaces()
-    
-    # Find all z-cylindrical surfaces and collect their radii
-    radii = [
-        surface.coefficients['r']
-        for surface in surfaces.values()
-        if surface.type == 'z-cylinder'
-    ]
-    
-    # Set inner radius based on smallest detected cylindrical surface
-    if radii:
-        min_radius = min(radii)
-    else:
-        min_radius = 0.0  # fallback if no cylinders are found
-    
-    # Build the r, phi, z grids
+def hollow_mesh_from_domain(domain, dimensions= [10, 10, 10], phi_grid_bounds=(0.0, 2 * np.pi)):
+    """
+    Generate a cylindrical mesh over an OpenMC cell or region tally domain.
+
+    Parameters:
+        domain (openmc.Region/ openmc.Cell): The domain to bound and mesh.
+        dimensions (tuple): Number of divisions in (r, phi, z), i.e., (nr, nphi, nz).
+        phi_grid_bounds (tuple): Angular bounds in radians for phi. Default is (0, 2π).
+
+    Returns:
+        openmc.CylindricalMesh: A cylindrical mesh aligned with the domain shell.
+    """
+    bounding_box = domain.bounding_box
+    region = domain.region if isinstance(domain, openmc.Cell) else domain
+
+    min_radius, max_radius = _cylindrical_r_bounds(region, bounding_box)
+
     r_grid = np.linspace(min_radius, max_radius, num=dimensions[0] + 1)
     phi_grid = np.linspace(phi_grid_bounds[0], phi_grid_bounds[1], num=dimensions[1] + 1)
     z_grid = np.linspace(bounding_box[0][2], bounding_box[1][2], num=dimensions[2] + 1)
 
-
     origin = (bounding_box.center[0], bounding_box.center[1], z_grid[0])
-
     z_grid -= origin[2]
 
-    # Construct and return the cylindrical mesh
-
-    cyl_mesh = openmc.CylindricalMesh(r_grid=r_grid, phi_grid=phi_grid, z_grid=z_grid, origin=origin)
-    
-    return cyl_mesh
+    return openmc.CylindricalMesh(r_grid=r_grid, phi_grid=phi_grid, z_grid=z_grid, origin=origin)
 
 def strings_to_openmc_filters(filter_strings: list[str]):
     filters = []

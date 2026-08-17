@@ -257,7 +257,7 @@ class Source1D(Source):
         phi_distribution = openmc.stats.Uniform(0, 2 * np.pi)
 
         # Radial distribution ensuring uniform radial emission
-        r_distribution = openmc.stats.PowerLaw(0, self.radius, -2)
+        r_distribution = openmc.stats.PowerLaw(0.001, self.radius, -2)
 
         sources_1d = []
         # Create individual discrete OpenMC sources for each axial position
