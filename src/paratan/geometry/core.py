@@ -837,3 +837,37 @@ def simple_mirror_vacuum_vessel_layer_region(
         right_bottleneck_length,
         axial_midplane,
     )
+
+def testing_region_semicircular(inner_radius, inner_radial_thickness, testing_region_radial_thickness,outer_radial_thickness, module_interior_thickness,axial_length_region, axial_end_thickness, axial_midplane=0.0):
+
+    if inner_radius <= 0 or inner_radial_thickness <= 0 or outer_radial_thickness <= 0 or testing_region_radial_thickness <= 0 or axial_end_thickness <= 0:
+        raise ValueError("All dimensions must be positive.")
+
+    testing_region_shell_outermost_cylinder = openmc.ZCylinder(r=inner_radius + inner_radial_thickness + testing_region_radial_thickness + outer_radial_thickness)
+    testing_region_shell_innermost_cylinder = openmc.ZCylinder(r=inner_radius)
+
+    testing_region_shell_leftmost_plane = openmc.ZPlane(z0 = axial_midplane - axial_length_region / 2.0)
+    testing_region_shell_rightmost_plane = openmc.ZPlane(z0 = axial_midplane + axial_length_region / 2.0)
+
+    testing_region_shell_region = (-testing_region_shell_outermost_cylinder & +testing_region_shell_innermost_cylinder) & (+testing_region_shell_leftmost_plane & -testing_region_shell_rightmost_plane)
+    
+    testing_module_splitting_plane = openmc.YPlane(y0 = 0.0)
+
+    module_1_interior_plane = openmc.YPlane(y0 = module_interior_thickness)
+    module_2_interior_plane = openmc.YPlane(y0 = -module_interior_thickness)
+
+    testing_region_interior_inner_cylinder = openmc.ZCylinder(r=inner_radius + inner_radial_thickness)
+    testing_region_interior_outer_cylinder = openmc.ZCylinder(r=inner_radius + inner_radial_thickness + testing_region_radial_thickness)
+
+    testing_region_interior_region = (-testing_region_interior_outer_cylinder & +testing_region_interior_inner_cylinder) & (+testing_region_shell_leftmost_plane & -testing_region_shell_rightmost_plane)
+
+    # Split the annular shell into +y / -y semicircular modules (do not complement the shell).
+    testing_module_1_interior_region = testing_region_interior_region & +module_1_interior_plane
+    testing_module_1_exterior_region = testing_region_shell_region & +testing_module_splitting_plane
+    testing_module_1_shell_region = testing_module_1_exterior_region & ~testing_module_1_interior_region
+    
+    testing_module_2_interior_region = testing_region_interior_region & -module_2_interior_plane
+    testing_module_2_exterior_region = testing_region_shell_region & -testing_module_splitting_plane
+    testing_module_2_shell_region = testing_module_2_exterior_region & ~testing_module_2_interior_region
+
+    return testing_module_1_interior_region, testing_module_1_shell_region, testing_module_2_interior_region, testing_module_2_shell_region
