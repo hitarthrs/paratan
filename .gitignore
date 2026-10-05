@@ -83,6 +83,11 @@ __pycache__/
 !FBIS-py/papers/**/*.pdf
 !FBIS-py/latex/**/*.pdf
 
+# Allow testing-module builder reference plots
+!plots/scll_module_builder_xz_xy.png
+!src/paratan/geometry/scll_first_wall_xz_xy.png
+!src/paratan/geometry/dcll_fnsf_xz_xy.png
+
 spatial_emulator_data/
 spatial_emulator_data_100_100/
 spatial_emulator_data_100_100_iteration_2/
