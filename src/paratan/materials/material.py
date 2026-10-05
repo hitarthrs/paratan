@@ -5,7 +5,6 @@
 
 import openmc
 import matplotlib.pyplot as plt
-from pkg_resources import ZipProvider
 import openmc.deplete
 
 length = 60

@@ -49,7 +49,8 @@ summarize_tbr_tallies.py
 
 reoorgainze.sh
 
-plot_*
+# Root-level plot helper scripts only (keep examples/plot_*.py tracked)
+/plot_*
 
 extract_tbr_to_csv.py
 
@@ -61,7 +62,11 @@ run.py
 geometry.xml
 make_source_files_tbr.py
 
-paratan
+# Nested local checkout / build dir at repo root (not src/paratan/)
+/paratan/
+
+__pycache__/
+*.py[cod]
 
 # Allow images in examples/
 !examples/**/*.png
@@ -87,3 +92,6 @@ compare_hf_study_runs/
 
 simple_mirror_big_parametric_study/
 simple_mirror_study_shield_dimensions_materials/
+
+.openmc-env/
+.DS_Store

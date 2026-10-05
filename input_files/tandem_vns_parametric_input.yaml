@@ -1,0 +1,217 @@
+# ________________________________________ VACUUM VESSEL INFORMATION ________________________________________ #
+
+vacuum_vessel:
+  central_cell:
+    central_radius: 62
+    central_axis_length: 600
+    outer_axial_length: 500
+  end_plug:
+    central_radius: 60
+    central_axis_length: 350
+    outer_axial_length: 200
+  bottleneck radius: 30
+  central_cell_end_plug_separation_distance: 300
+  end_axial_distance: 300
+
+# ________________________________________ FIRST WALL INFORMATION ________________________________________ #
+
+first_wall:
+  central_cell:
+    layers:
+    - thickness: 0.5
+      material: tungsten
+    - thickness: 2.5
+      material: FW_FNSF
+  end_plug:
+    layers:
+    - thickness: 0.5
+      material: tungsten
+    - thickness: 3
+      material: FW_FNSF
+
+# _________________________________________ CENTRAL CELL INFORMATION _____________________________________ #
+
+central_cell:
+
+# _________________________________________ CENTRAL TEST ENVELOPE __________________________________________ #
+
+  # cm; radial_thickness starts at the outer surface of the central first wall.
+  # This whole envelope is vacuum until a test-module universe is installed.
+  test_region:
+    axial_length: 650
+    radial_thickness: 129.5  # Matches the original 95 + 2 + 30 + 2.5 cm envelope.
+
+  test_modules:
+    count: 2  # Planned modules only; no module solids are built yet.
+
+
+# ________________________________________ CENTRAL CELL LF COIL PARAMETERS ________________________________________ #
+
+  lf_coil:
+    shell_thicknesses:
+      front: 10
+      back: 5
+      axial: 10
+    inner_dimensions:
+      axial_length: 20
+      radial_thickness: 10
+    positions: [-155, -70, 0, 70, 155]  # Coil center positions along the Z-axis
+    materials:
+      shield: stainless
+      magnet: Magnet_Winding_Pack_2
+
+  # ________________________________________CENTRAL CELL LF COIL TALLY FLAGS ________________________________________ #
+
+    # lf_coil_tallies:
+    #   cell_tallies:
+    #     - scores: ['flux', 'heating']
+    #       filters: ['neutron_filter']
+    #       nuclides: ['Li6', 'Li7']
+    #     - scores: ['absorption']
+    #       filters: ['fast_energies_filter']
+
+    #   mesh_tallies:
+    #     - scores: ['flux', 'heating']
+    #       filters: ['neutron_filter']
+    #       nuclides: ['Li6', 'Li7']
+    #       dimensions: [10,10,10]
+    
+
+
+# _________________________________________ END PLUG INFORMATION _____________________________________ #
+
+end_plug:
+
+  # ________________________________________ CENTRAL CYLINDER INFORMATION ________________________________________ #
+
+  central_cylinder:
+    axial_length: 360
+    layers:
+      - thickness: 75
+        material: vacuum  # Breeding Blanket
+      - thickness: 5
+        material: BW_FNSF  # Back Wall
+      - thickness: 20
+        material: HT_Shield_filler  # HT Shield Filler
+      - thickness: 5
+        material: water_cooled_wc  # HT Shield Back Plate
+    tallies:
+      breeder:
+        cell_tallies:
+          - scores: ['H3-production']
+            filters: ['neutron_filter']
+            nuclides: ['Li6', 'Li7']
+
+      # layer_tallies:
+      #   - position: 2
+      #     cell_tallies:
+      #       - scores: ['flux', 'heating', 'H3-production']
+      #         filters: ['neutron_filter']
+      #         nuclides: ['Li6', 'Li7']
+      #     mesh_tallies:
+      #       - scores: ['flux', 'heating']
+      #         filters: ['neutron_filter']
+      #         nuclides: ['Li6', 'Li7']
+      #         dimensions: [10,10,10]
+      #   - position: 3
+      #     cell_tallies:
+      #       - scores: ['heating']
+      #         filters: ['thermal_energies_filter']
+
+  # ________________________________________ LF COIL PARAMETERS ________________________________________ #
+
+  lf_coil:
+    shell_thicknesses:
+      front: 10
+      back: 5
+      axial: 10
+    inner_dimensions:
+      axial_length: 20
+      radial_thickness: 10
+    positions:
+      - 75
+      - -75  # Coil center positions along the Z-axis from the midplane of the end plug vacuum vessel
+    materials:
+      shield: stainless
+      magnet: Magnet_Winding_Pack_2
+
+
+
+    # ________________________________________ LF COIL TALLY FLAGS ________________________________________ #
+
+    # lf_coil_tallies:
+    #   cell_tallies:
+    #     - scores: ['flux', 'heating']
+    #       filters: ['neutron_filter']
+    #       nuclides: ['Li6', 'Li7']
+    #     - scores: ['absorption']
+    #       filters: ['fast_energies_filter']
+
+    #   mesh_tallies:
+    #     - scores: ['flux', 'heating']
+    #       filters: ['neutron_filter']
+    #       nuclides: ['Li6', 'Li7']
+    #       dimensions: [10,10,10]
+  # ________________________________________ HF COIL PARAMETERS ________________________________________ #
+
+  hf_coil:
+    left:
+      magnet:
+        bore_radius: 66.5
+        radial_thickness: 150
+        axial_thickness: 150
+        material: Magnet_Winding_Pack_2
+      casing_layers:
+        - thickness: 1
+          material: vacuum
+        - thickness: 1
+          material: ss316ln
+      shield:
+        radial_gap_before_casing: 1
+        shield_central_cell_gap: 5
+        radial_thickness: [30, 30]  # First value: towards central axis, second: away
+        axial_thickness: [20, 10]  # First value: towards midplane, second: away
+        material: cooled_tungsten_boride
+    right:
+      magnet:
+        bore_radius: 66.5
+        radial_thickness: 150
+        axial_thickness: 150
+        material: Magnet_Winding_Pack_2
+      casing_layers:
+        - thickness: 1
+          material: vacuum
+        - thickness: 1
+          material: ss316ln
+      shield:
+        radial_gap_before_casing: 1
+        shield_central_cell_gap: 5
+        radial_thickness: [30, 30]  # First value: towards central axis, second: away
+        axial_thickness: [20, 10]  # First value: towards midplane, second: away
+        material: cooled_tungsten_boride
+
+    # hf_coil_tallies:
+    #   cell_tallies:
+    #     - scores: ['flux', 'heating']
+    #       filters: ['neutron_filter']
+    #       nuclides: ['Li6', 'Li7']
+    #     - scores: ['absorption']
+    #       filters: ['fast_energies_filter']
+
+    #   mesh_tallies:
+    #     - scores: ['flux', 'heating']
+    #       filters: ['neutron_filter']
+    #       nuclides: ['Li6', 'Li7']
+    #       dimensions: [10,10,10]
+    #     - scores: ['absorption']
+    #       filters: ['fast_energies_filter']
+    #       dimensions: [3,26,12]
+        
+# ________________________________________ END CELL PARAMETERS ________________________________________ #
+
+end_cell:
+  axial_length: 500
+  shell_thickness: 3
+  diameter: 350
+  shell_material: stainless
+  inner_material: vacuum
