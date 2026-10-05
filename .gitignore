@@ -78,6 +78,11 @@ __pycache__/
 !examples/**/*.eps
 !examples/**/*.ps
 
+# Allow vendored solver documentation PDFs
+!newton_paratan-main/**/*.pdf
+!FBIS-py/papers/**/*.pdf
+!FBIS-py/latex/**/*.pdf
+
 spatial_emulator_data/
 spatial_emulator_data_100_100/
 spatial_emulator_data_100_100_iteration_2/
@@ -95,3 +100,14 @@ simple_mirror_study_shield_dimensions_materials/
 
 .openmc-env/
 .DS_Store
+
+# Local trial / archived zip (prefer unpacked newton_paratan-main)
+simple_trial/
+newton_paratan-UW-version.zip
+
+# Solver checkout run artifacts and caches
+newton_paratan-main/runs/
+FBIS-py/outputs/
+FBIS-py/__pycache__/
+
+FBIS-py.git.bak/

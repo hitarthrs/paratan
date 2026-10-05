@@ -1,0 +1,176 @@
+\documentclass{article}
+\usepackage{amsmath, graphicx, fullpage, enumitem}
+\usepackage[utf8]{inputenc}
+
+\numberwithin{equation}{section}
+
+\usepackage{hyperref}
+\hypersetup{
+	colorlinks=true,
+	linkcolor=blue,
+	filecolor=magenta,      
+	urlcolor=cyan,
+}
+
+\newcommand\pd[2]{ \frac{\partial #1}{\partial #2} }
+\newcommand\pdt[3]{ \left( \frac{\partial #1}{\partial #2} \right)_{#3} }
+\newcommand\ratsq[2]{ \left( \frac{ #1}{ #2} \right)^2 }
+
+\newcommand\nl{\vskip 10pt \noindent}
+\newcommand\para{\parallel}
+\newcommand\en{\epsilon_0}
+\newcommand\bm[1]{ \mathbf{#1} }
+\newcommand\dd{\partial}
+\newcommand\w{\omega}
+
+\newcommand\avg[1]{\left< #1 \right> }
+\newcommand\ket[1]{\left| #1 \right> }
+
+\newcommand\setp[1]{\left( #1 \right) }
+\newcommand\setb[1]{\left[ #1 \right] }
+\newcommand\setc[1]{\left\{ #1 \right\}  }
+\newcommand\setl[1]{\left| #1 \right|  }
+
+\newcommand\mat[1]{ \left( \begin{matrix} #1 \end{matrix} \right)}
+\newcommand\detmat[1]{ \left|\begin{matrix} #1 \end{matrix} \right|}
+\newcommand\sqmat[1]{ \left[\begin{matrix} #1 \end{matrix} \right]}
+
+\newcommand\dv{\, d^3\bm{v} }
+
+\newcommand\bull[1]{ \begin{itemize} #1 \end{itemize} }
+\newcommand\eqalign[1]{ \begin{align} #1 \end{align} }
+\newcommand\eq[1]{
+    \begin{equation}
+        \begin{split} #1 \end{split}
+    \end{equation} }
+
+\newcommand\alphenum[1]{ \begin{enumerate}[label=\alph*)] #1 \end{enumerate} }
+\newcommand\tab[2]
+{\left\{ \begin{tabular}{#1}
+		#2
+	\end{tabular} \right.}
+
+\newcommand\myFig[2]
+{\begin{figure}[h!]
+		\centering
+		\includegraphics[#1]{#2}
+\end{figure}}
+
+\newcommand\myTitle[1] {
+	\noindent \textbf{#1 \hfill Tony M. Qian  : 1 April 2026 } 
+	\\ \hrule \nl
+}
+
+
+\begin{document}
+	
+\myTitle{FBIS Notes}
+These notes follow the FBIS (2022, NF) paper by Jan Egedal, Doug Endrizzi, Cary Forest, and Ken Fowler. It is a remarkable work. Lesser scientists would have published this as (3) papers. The single $<$20-pg manuscript combines novel analytic derivations, a new code FBIS for solving beam driven velocity space distributions, and predictions for axisymmetric mirror fusion reactors that launched an entire research program.
+
+In these notes I attempt to rederive the entire paper, clarify skipped (but correct) steps, document typos, and reproduce the work in python.
+
+\section{Overview}
+\begin{itemize}
+	\item Section 1: Introduce mirror physics, with reference to important results. The last paragraph doesn't actually outline the paper, it only describes Section 2. So I will proceed to outline the paper here.
+	
+	\item Section II: Introduce Fokker Planck equation and provide analytic solution for a case with simplifying assumptions.
+	
+	The key equation is (E1) 
+	\eq{
+		\pd{f}{t} = \frac{1}{\tau_s v^3} \pd{}{v} [(v^3 + v_c^3)f] + \frac{\beta_m}{\tau_s} \frac{v_c^3}{v^3} L f + S(\xi,v)
+	}
+	This is a velocity space equation that solve for $f = f_z(v)$, a 2D velocity space distribution at a specific point in space. The first term is drag, where $v_c = v_c(T_e)$ sets one key velocity scale. The second term $Lf$ is the Lorentz pitch angle operator. It is a Laplacian in cylindrical velocity space coordinates, that acts to smooth velocity space. The third term $S(\xi,v)$ is a source term that introduces the natural coordinates for solving this problem.
+
+	We find that $f(v,\xi) = f(v)M(\xi)$ admits a natural solution for the problem because $M(\xi)$ is an eigenfunction for $L$. Specifically, $M$ is derived as a linear combination of non-integer Legendre polynomials.
+
+	The key result is (E13), and after understanding Section 2, one can reproduce figures 1-3. It is important to project $S$ onto the Legendre basis. The Matlab code assumes $S$ is a Gaussian, from which projection gives a family of $M_j$. This fact is omitted from the paper, and Figure 3 can not be produced using only $M_1$.
+
+	\item Section III: Use analytic model to produce reactor relevant results.
+	
+	The first key insight is (E17)
+	\eq{
+		\frac{Q_0}{\tilde T_i \tilde \tau_p}
+		= \frac{E_{fusion}}{T_i}
+		\frac{v\sigma_{DT}}{4 v_{Ti} \sigma^{ii}_{v_{Ti}}}
+	}
+	This gives the famous result that mirror fusion can at best reach $Q \sim 1$. It introduces a $\sigma v$ reaction rate related to $v_{Ti}$ that normalizes the $\sigma v$ from DT fusion. The normalization on the LHS seems strange at first. Both top and bottom are already dimensionless, and $T_i, \tau_P$ do not seem to be related to $Q_0$. What the authors are doing here is isolating the non-linear term on RHS and showing that after computing the non-linear reaction ratios, there are two linear scale factors related to $T_i$ and $\tau_P$.
+	
+	A key analytic result is (E20) which provides a closed form for $f_1(v)$.
+
+	Using this analytic form for $f = f_1 M_1$, one can compute the mirror confinement time. Start with $n = \int f d^3 v$, then make the steady state assumption $I_{beam} \sim n/\tau_P$. The asymptotic properties of $M_1$, an eigensolution of the $L$-operator, gives the famous result that $\tau_{P} \sim \log_{10} R_M$.
+
+	From here one can reproduce figures 4-9.
+
+	\item Section 4: More sophisticated solution for actual $B(z)$ profiles. This now requires numeric computation to solve. 
+	
+	Up until now we assumed $B(z)$ is a step function. The field is uniform, and then there is an instantaneous step that either reflects the particles or doesn't. In real life, $B(z)$ is continuous which introduces different degrees of trapping through velocity-space dependent bounce points. So it is helpful to map $\xi \to \Lambda$, where $\Lambda = \frac{\mu}{\epsilon} B_0$ is a generalized pitch angle variable.
+
+	I would call this and the rest of the paper semi-analytic, because we are still solving equations and not taking discrete time steps. The spatial grid is discretized for purposes of bounce integration.
+
+	This is used to produce Fig 10, which remarkably predicts $n(z)$ from just $B$ (E57).
+	This section still neglects the loss cone and ambipolar potential.
+
+	\item Section 5: Introduce FBIS
+	
+	The Fast Beam Ion Solver solve (E59), which is a modified version of (E1, E13, E19). It adds a fourth term for energy diffusion, and also refines both the slowing down and Lorentz scattering terms with additional Rosenbluth potentials. Assuming $\partial f/\partial t = 0$ steady state
+	\eq{
+		-\beta_m \lambda_j \frac{v_c^3}{v^3} \tilde g_1 f_j
+		+ \frac{1}{v^2} \pd{}{v} \setb{
+			\setp{v^3 + v_c^3 \tilde h} f_j
+			+ \frac{1}{2} v_c^3 \tilde g_2 \pd{f_j}{v}
+		}
+		= - \tau_s S_j \frac{\delta(v - v_0)}{v^2}
+	} 
+	where
+	\eq{
+		\tilde h &= - v^2 \pd{h}{v} \\
+		\tilde g_1 &= \pd{g}{v} \\
+		\tilde g_2 &= v^2 \pd{^2g}{v^2}
+	}
+	and
+	\eq{
+		g(v) &= \frac{ \int f_1(v') |\bm{v} - \bm{v'}|\, d^3 \bm{v'}}
+		{\int f_1(v') \, d^3 \bm{v'}} \\
+		h(v) &= \frac{ \int \frac{f_1(v')} {|\bm{v} - \bm{v'}| } \, d^3 \bm{v'}}
+		{\int f_1(v') \, d^3 \bm{v'}}
+	}
+	Note that $\tilde h$ and $\tilde g_1$ are dimensionless, while $\tilde g_2 \sim v$. 
+
+	Next a derivation is presented for computing the loss cone distributions for ions (E61) and electrons (E67), and the balance of these is used to compute the ambipolar potential (E73). This produces the distributions shown in Figures 12-13.
+
+	I would describe this method as more numerical than the semi-analytic calculation in Section 4, because the distribution is refined through iterative calculations.
+\end{itemize}
+
+\section{Calculations}
+
+\section{Appendix: Corrigendum}
+\begin{enumerate}
+\item (suggestion) Intro, third paragraph, last sentence: A GDT result is stated to achieve $T = 0.9 keV$. I would refine this to $T_e = 0.9 keV$.
+
+\item (typo) Section 2.3, above (E13): the text states $L M_{\lambda _j} = - \Lambda_j M_{\lambda_1}$. The final subscript should be $M_{\lambda _j}$.
+
+\item  (clarification) Section 3.3: the dimensionless auxiliary heat is defined
+\eq{
+	p_{aux} = \frac{P_\alpha + P_{other} + P_{loss}}{E_{beam}}
+} when later a dimensionless heating power is argued to be $\tilde p_{aux} = Q_0 \frac{E_\alpha}{E_{fusion}}$.
+This definition is rather misleading, because it seems the LHS should be dimensionless and warrant a tilde, while the tilde $\tilde p_{aux}$ is never defined in the paper. But if the equation is a definition for $\tilde p_{aux}$ the numerator and denominator have conflicting dimensions. I would recommend replacing with
+\eq{
+	\tilde p_{aux} = \frac{P_\alpha + P_{other} + P_{loss}}{P_{beam}}
+}
+
+\item (typo) Section 3.4 (E26, E27,E29):
+It seems these are all small by a factor of two. I need to check whether this has a consequence for (E31).
+
+\item (typo) E39 prefactor is missing factor of 2.
+
+\item (typo) E41 defines $\avg{L}_x$, which is used in Lichko Egedal 2021, but everywhere else in this paper the bounce average is defined $\avg{L}_z$.
+
+\item (typo) Section 5.5, unnumbered equation above (E65):
+It seems the equation only makes since in terms of continuity with downstream arguments, and dimension balance, if RHS is multiplied by differential $dv$.
+
+\item (typo) (E65) all 3 lines should replace factor $v^2$ with $v$. This is consistent with both earlier equation (E61) and later equation (E67).
+
+\end{enumerate}
+
+
+\end{document}

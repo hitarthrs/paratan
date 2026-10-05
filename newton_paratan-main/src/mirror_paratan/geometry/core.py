@@ -1,0 +1,504 @@
+import openmc
+import numpy as np
+
+def hollow_cylinder_with_shell(z0, innermost_radius, inner_radial_thickness,inner_axial_thickness, shell_thickness_front, shell_thickness_back, shell_axial_thickness):
+
+    """ Generates an OpenMC region in the shape of a cylindrical shell with distinct inner and shell regions. 
+    This geometry is symmetrical around the midplane (z = z0) and consists of the following structure:
+    
+    1. A central inner cylindrical section with a defined axial and radial thickness.
+    2. An outer cylindrical shell surrounding the inner cylinder, with adjustable front and back thicknesses.
+    3. Axial boundaries for both inner and outer regions, allowing for a controlled extension along the z-axis.
+    
+    This configuration creates a hollow cylindrical shell structure, with the inner and shell regions 
+    mirroring each other symmetrically around the midplane.
+
+    Parameters
+    ------------
+    z0 (cm): Axial position of the central midplane (z = z0) for the geometry.
+    innermost_radius (cm): Radius of the innermost boundary of the shell.
+    inner_radial_thickness (cm): Radial thickness of the inner cylindrical section.
+    inner_axial_thickness (cm): Axial thickness of the inner cylindrical section.
+    shell_thickness_front (cm): Radial thickness of the shell on the front (inner) side.
+    shell_thickness_back (cm): Radial thickness of the shell on the back (outer) side.
+    shell_axial_thickness (cm): Additional axial thickness of the outer boundary along the z-axis.
+
+    Returns
+    ------------
+    tuple:
+        shell_region : The annular region representing the outer shell, located between the inner and outer cylindrical sections.
+        inner_region : The inner cylindrical region defined within the innermost boundaries.
+    """
+        
+    inner_boundary_left = openmc.ZPlane(z0-inner_axial_thickness/2)
+    outer_boundary_left = openmc.ZPlane(z0-inner_axial_thickness/2-shell_axial_thickness)
+    
+    inner_boundary_right = openmc.ZPlane(z0+inner_axial_thickness/2)
+    outer_boundary_right = openmc.ZPlane(z0+inner_axial_thickness/2+shell_axial_thickness)
+    
+    inner_cylinder_front = openmc.ZCylinder(r=innermost_radius)
+    inner_cylinder_back = openmc.ZCylinder(r=innermost_radius+shell_thickness_front)
+    
+    outer_cylinder_front = openmc.ZCylinder(r=innermost_radius+shell_thickness_front+inner_radial_thickness)
+    outer_cylinder_back = openmc.ZCylinder(r=innermost_radius+shell_thickness_front+inner_radial_thickness+shell_thickness_back)
+    
+    inner_region = (+inner_cylinder_back & -outer_cylinder_front) & -inner_boundary_right & +inner_boundary_left
+    
+    outer_region = (+inner_cylinder_front & -outer_cylinder_back) & -outer_boundary_right & +outer_boundary_left
+    
+    shell_region = outer_region & ~inner_region
+    
+    return shell_region , inner_region
+
+def cylinder_with_shell(z0, innermost_radius, inner_axial_thickness, shell_thickness):
+    """ Generates an OpenMC region representing a cylindrical structure with an outer shell of uniform radial and axial thickness. 
+    This geometry is symmetrical around the midplane (z = z0) and consists of the following structure:
+    
+    1. An inner cylindrical region that is hollow (no material inside), bounded axially and radially.
+    2. An outer cylindrical shell surrounding the inner hollow cylinder, with adjustable shell thickness along both radial and axial directions.
+    
+    This configuration creates a hollow cylinder with a defined outer shell around it
+
+    Parameters
+    ------------
+    z0 (cm) : Axial position of the central midplane (z = z0) for the geometry.
+    innermost_radius (cm) : Radius of the innermost boundary of the hollowed cylinder.
+    inner_axial_thickness (cm) : Axial thickness of the inner cylindrical section.
+    shell_thickness (cm) : Radial and axial thickness of the surrounding shell.
+
+    Returns
+    ------------
+    tuple:
+        outer_shell_region : The annular region representing the shell around the cylinder.
+        inner_cylinder_region : The region of the inner cylinder within the defined boundaries.
+    """
+    inner_boundary_left = openmc.ZPlane(z0-inner_axial_thickness/2)
+    outer_boundary_left = openmc.ZPlane(z0-inner_axial_thickness/2-shell_thickness)
+    
+    inner_boundary_right = openmc.ZPlane(z0+inner_axial_thickness/2)
+    outer_boundary_right = openmc.ZPlane(z0+inner_axial_thickness/2+shell_thickness)
+    
+    inner_cylinder = openmc.ZCylinder(r=innermost_radius)
+    outer_cylinder = openmc.ZCylinder(r=innermost_radius+shell_thickness)
+    
+    inner_cylinder_region = +inner_boundary_left & -inner_boundary_right & -inner_cylinder
+    outer_cylinder_region = +outer_boundary_left & -outer_boundary_right & -outer_cylinder
+    
+    outer_shell_region = outer_cylinder_region & ~inner_cylinder_region
+    
+    return outer_shell_region, inner_cylinder_region
+
+def nested_cylindrical_shells(z0, innermost_radius, inner_radial_thickness,inner_axial_thickness, layer_front_thickness, layer_back_thickness, layer_axial_thickness):
+    """Generates a set of nested OpenMC regions representing cylindrical shells with user-defined inner and outer boundaries.
+    This geometry is symmetrical around the midplane (z = z0) and consists of multiple layers structured as follows:
+    
+    1. An innermost cylindrical core with specified axial and radial thickness.
+    2. Multiple shell regions surrounding the core, each with specified radial and axial thicknesses.
+    3. Each shell region is defined by distinct inner and outer boundaries, extending outward from the core.
+       The inner radius specifies the radius of the inner side of the outermost shell.
+
+    This configuration is useful for simulations requiring layered, concentric cylindrical geometries, such as 
+    neutron transport or radiation shielding studies, where each layer represents a material with different properties.
+
+    Parameters
+    ------------
+    z0 (cm) : Axial position of the central midplane (z = z0) for the geometry (in cm).
+        
+    inner_radius (cm) : Radius of the inner side of the outermost shell (in cm).
+        
+    inner_radial_thickness (cm) : Radial thickness of the innermost cylindrical core (in cm).
+        
+    inner_axial_thickness (cm) : Axial thickness of the innermost cylindrical core (in cm).
+        
+    layer_front_thickness  (list of float [cm]) : Radial thicknesses for the front side of each successive shell layer (in cm).
+        
+    layer_back_thickness (list of float [cm]) : Radial thicknesses for the back side of each successive shell layer (in cm).
+        
+    layer_axial_thickness (list of float [cm]) : Axial thicknesses for each successive shell layer (in cm).
+
+    Returns
+    ------------
+    regions : list of openmc.Region
+        A list of OpenMC region objects, where each region represents a nested cylindrical shell with distinct boundaries.
+    
+    Notes
+    -----
+    This function constructs a set of nested cylindrical shells, each bounded by radial and axial surfaces.
+    The outermost boundary is defined only up to the last specified layer's thickness, without an enclosing outer boundary.
+
+    """
+    
+    inner_left_layer = z0-inner_axial_thickness/2
+    left_boundaries = [openmc.ZPlane(inner_left_layer)]
+
+    inner_right_layer = z0+inner_axial_thickness/2
+    right_boundaries = [openmc.ZPlane(inner_right_layer)]
+
+    axial_layers = np.asarray(layer_axial_thickness, dtype=float)
+    if axial_layers.ndim == 1:
+        left_axial_layers = axial_layers
+        right_axial_layers = axial_layers
+    elif axial_layers.ndim == 2 and axial_layers.shape[1] == 2:
+        left_axial_layers = axial_layers[:, 0]
+        right_axial_layers = axial_layers[:, 1]
+    else:
+        raise ValueError("layer_axial_thickness must contain scalars or left/right pairs")
+    if np.any(~np.isfinite(axial_layers)) or np.any(axial_layers < 0.0):
+        raise ValueError("layer_axial_thickness must be finite and nonnegative")
+
+    for i in range(len(left_axial_layers)):
+        inner_left_layer -= left_axial_layers[i]
+        inner_right_layer += right_axial_layers[i]
+
+        left_plane = openmc.ZPlane(inner_left_layer)
+        right_plane = openmc.ZPlane(inner_right_layer)
+
+
+        left_boundaries.append(left_plane)
+        right_boundaries.append(right_plane)
+
+
+    regions = []
+
+    inner_cylinders_radii_array = np.cumsum(layer_front_thickness[::-1])[::-1]+innermost_radius
+    inner_cylinders_radii_array = np.append(inner_cylinders_radii_array, inner_cylinders_radii_array[-1]-layer_front_thickness[-1])
+    outer_cylinders_radii_array = np.array([inner_cylinders_radii_array[0]+inner_radial_thickness])
+    outer_cylinders_radii_array = np.concatenate((outer_cylinders_radii_array, np.cumsum(layer_back_thickness)+outer_cylinders_radii_array[0]))
+    innermost_cylinder_front = openmc.ZCylinder(r = inner_cylinders_radii_array[0])
+    innermost_cylinder_back = openmc.ZCylinder(r = outer_cylinders_radii_array[0])
+
+    innermost_region = (-innermost_cylinder_back & +innermost_cylinder_front) & +left_boundaries[0] & -right_boundaries[0]
+    regions.append(innermost_region)
+
+
+    for i in range(1,len(inner_cylinders_radii_array)):
+
+        old_cylinder_front = openmc.ZCylinder(r = inner_cylinders_radii_array[i-1])
+        old_cylinder_back = openmc.ZCylinder(r = outer_cylinders_radii_array[i-1])
+        
+        new_cylinder_front = openmc.ZCylinder(r = inner_cylinders_radii_array[i])
+        new_cylinder_back = openmc.ZCylinder(r = outer_cylinders_radii_array[i])
+
+        old_cylinder = (-old_cylinder_back & +old_cylinder_front) & +left_boundaries[i-1] & -right_boundaries[i-1]
+        new_cylinder = (-new_cylinder_back & +new_cylinder_front) & +left_boundaries[i] & -right_boundaries[i]
+        
+        new_region = new_cylinder & ~old_cylinder
+
+        regions.append(new_region) 
+
+        
+    return regions
+
+
+def hollow_mesh_from_domain(domain, dimensions=(10, 10, 10), phi_grid_bounds=(0.0, 2 * np.pi)):
+    """
+    Generate a cylindrical mesh overs a hollow region defined by an OpenMC region.
+    
+    Parameters:
+        domain (openmc.Region/ openmc.Cell): The domain to bound and mesh (not necessarily hollow).
+        dimensions (tuple): Number of divisions in (r, phi, z), i.e., (nr, nphi, nz).
+        phi_grid_bounds (tuple): Angular bounds in radians for phi. Default is (0, 2π).
+    
+    Returns:
+        openmc.CylindricalMesh: A cylindrical mesh over the hollow region.
+    """
+    # Get the bounding box of the region
+    bounding_box = domain.bounding_box
+    if isinstance(domain, openmc.Cell):
+        region = domain.region
+    elif isinstance(domain, openmc.Region):
+        region = domain
+    else:
+        raise TypeError("domain must be an OpenMC Cell or Region")
+    surfaces = region.get_surfaces()
+    radii = [surface.coefficients['r'] for surface in surfaces.values() if surface.type == 'z-cylinder']
+    max_radius = max(radii) if radii else max(abs(bounding_box[0][0]), abs(bounding_box[0][1]), abs(bounding_box[1][0]), abs(bounding_box[1][1]))
+    
+    # Create outer bounding cylindrical surfaces
+    outer_cylinder = openmc.ZCylinder(r=max_radius)
+    lower_z = openmc.ZPlane(bounding_box[0][2])
+    upper_z = openmc.ZPlane(bounding_box[1][2])
+    
+    outer_region = -outer_cylinder & +lower_z & -upper_z
+    
+    # Subtract the original region to define hollow space
+    hollow_region = outer_region & ~region
+    
+    # Extract all surfaces in the resulting region
+    surfaces = hollow_region.get_surfaces()
+    
+    # Find all z-cylindrical surfaces and collect their radii
+    radii = [
+        surface.coefficients['r']
+        for surface in surfaces.values()
+        if surface.type == 'z-cylinder'
+    ]
+    
+    # Set inner radius based on smallest detected cylindrical surface
+    if radii:
+        min_radius = min(radii)
+    else:
+        min_radius = 0.0  # fallback if no cylinders are found
+    
+    # Build the r, phi, z grids
+    r_grid = np.linspace(min_radius, max_radius, num=dimensions[0] + 1)
+    phi_grid = np.linspace(phi_grid_bounds[0], phi_grid_bounds[1], num=dimensions[1] + 1)
+    z_grid = np.linspace(bounding_box[0][2], bounding_box[1][2], num=dimensions[2] + 1)
+
+
+    origin = (bounding_box.center[0], bounding_box.center[1], z_grid[0])
+
+    z_grid -= origin[2]
+
+    # Construct and return the cylindrical mesh
+
+    cyl_mesh = openmc.CylindricalMesh(r_grid=r_grid, phi_grid=phi_grid, z_grid=z_grid, origin=origin)
+    
+    return cyl_mesh
+
+def single_vacuum_vessel_region(outer_axial_length, central_axial_length, central_radius, bottleneck_radius, left_bottleneck_length, right_bottleneck_length, axial_midplane=0.0):
+    
+    """
+    Generates an OpenMC region representing a single vacuum vessel section for one part of a fusion device.
+
+    The geometry is symmetric about an axial midplane and consists of:
+      1. A central cylindrical section.
+      2. A conical taper connecting to an outer bottleneck cylindrical section.
+      3. Thin outer cylindrical sections extending outward.
+
+    Parameters
+    ----------
+    outer_axial_length : float
+        Total axial length (cm) of the outer cylindrical segments beyond the cone sections.
+    central_axial_length : float
+        Total axial length (cm) of the central cylindrical section.
+    central_radius : float
+        Radius (cm) of the central cylindrical section.
+    bottleneck_radius : float
+        Radius (cm) of the outer (bottleneck) cylindrical sections.
+    left_bottleneck_length : float
+        Axial length (cm) of the bottleneck section on the left side of the midplane.
+    right_bottleneck_length : float
+        Axial length (cm) of the bottleneck section on the right side of the midplane.
+    axial_midplane : float, optional
+        Z-coordinate (cm) of the midplane. Default is 0.0.
+
+    Returns
+    -------
+    openmc.Region
+        An OpenMC region object representing the single vacuum vessel section.
+
+    Raises
+    ------
+    ValueError
+        If any input length or radius is non-positive.
+        If central_radius is less than bottleneck_radius.
+    """
+
+    # --- Input validation ---
+    if outer_axial_length <= 0 or central_axial_length <= 0:
+        raise ValueError("Axial lengths must be positive.")
+    if central_radius <= 0 or bottleneck_radius <= 0:
+        raise ValueError("Radii must be positive.")
+    if left_bottleneck_length <= 0 or right_bottleneck_length <= 0:
+        raise ValueError("Bottleneck lengths must be positive.")
+    if central_radius < bottleneck_radius:
+        raise ValueError("Central radius must be greater than bottleneck radius.")
+
+    # --- Set important z-positions ---
+    first_plane_distance = outer_axial_length / 2.0
+    second_plane_distance = central_axial_length / 2.0
+    
+    # Calculate cone angle based on geometry (same logic as redefined function)
+    angle = np.arctan(2*(central_radius - bottleneck_radius)/(central_axial_length - outer_axial_length))
+
+    right_outermost_plane_distance = second_plane_distance + right_bottleneck_length
+    left_outermost_plane_distance = -second_plane_distance - left_bottleneck_length
+
+    # --- Define Z-planes ---
+    central_cylinder_left_plane = openmc.ZPlane(z0=axial_midplane - first_plane_distance)
+    central_cylinder_right_plane = openmc.ZPlane(z0=axial_midplane + first_plane_distance)
+
+    # --- Planes for the left cylinder
+    #--- Left outermost plane ---
+    left_outer_cylinder_1 = openmc.ZPlane(z0=axial_midplane + left_outermost_plane_distance)
+    #--- Left cone plane ---
+    right_outer_cylinder_1 = openmc.ZPlane(z0=axial_midplane - second_plane_distance)
+    
+    #--- Planes for the right cylinder ---
+    #--- Right outermost plane ---
+    left_outer_cylinder_2 = openmc.ZPlane(z0=axial_midplane + second_plane_distance)
+    #--- Right cone plane ---
+    right_outer_cylinder_2 = openmc.ZPlane(z0=axial_midplane + right_outermost_plane_distance)
+    
+    # --- Define cylinders ---
+    central_cell_cylinder = openmc.ZCylinder(r=central_radius)
+    outer_cylinder = openmc.ZCylinder(r=bottleneck_radius)
+    
+    # --- Build regions ---
+    central_cylinder = -central_cell_cylinder & +central_cylinder_left_plane & -central_cylinder_right_plane
+    
+    left_outer_cylinders_region = -outer_cylinder & (+left_outer_cylinder_1 & -right_outer_cylinder_1)
+    right_outer_cylinders_region = -outer_cylinder & (+left_outer_cylinder_2 & -right_outer_cylinder_2)
+    outer_cylinders_region = left_outer_cylinders_region | right_outer_cylinders_region
+    
+    # --- Build cones using calculated angle ---
+    left_cone = openmc.model.ZConeOneSided(
+        x0=0.0, y0=0.0, 
+        z0=axial_midplane - (central_radius/np.tan(angle) + first_plane_distance), 
+        r2=(np.tan(angle))**2
+    )
+    right_cone = openmc.model.ZConeOneSided(
+        x0=0.0, y0=0.0, 
+        z0=axial_midplane + (central_radius/np.tan(angle) + first_plane_distance), 
+        r2=(np.tan(angle))**2, 
+        up=False
+    )
+    
+    # --- Build cone regions ---
+    left_cone_region = -left_cone & -central_cylinder_left_plane & +left_outer_cylinder_1
+    right_cone_region = -right_cone & +central_cylinder_right_plane & -right_outer_cylinder_2
+    
+    # --- Full vessel region ---
+    vessel_region = left_cone_region | right_cone_region | outer_cylinders_region | central_cylinder
+
+    # --- Return region and components for reference ---
+    components = {
+        'central_cylinder': central_cylinder,
+        'left_cone': left_cone_region,
+        'right_cone': right_cone_region,
+        'left_outer_cylinder': left_outer_cylinders_region,
+        'right_outer_cylinder': right_outer_cylinders_region,
+        'outer_cylinders': outer_cylinders_region,
+        'planes': {
+            'central_left': central_cylinder_left_plane,
+            'central_right': central_cylinder_right_plane,
+            'left_end': left_outer_cylinder_1,
+            'left_cone_plane': right_outer_cylinder_1,
+            'right_cone_plane': left_outer_cylinder_2,
+            'right_end': right_outer_cylinder_2,
+        }
+    }
+
+    return vessel_region, components
+
+def perpendicular_vacuum_vessel_region(central_axial_length, central_radius, bottleneck_radius, left_bottleneck_length, right_bottleneck_length, axial_midplane=0.0):
+
+    """
+    Generates an OpenMC region representing a perpendicular vacuum vessel section for one part of a fusion device.
+
+    The geometry is symmetric about an axial midplane and consists of:
+      1. A central cylindrical section.
+      2. A conical taper connecting to an outer bottleneck cylindrical section.
+      3. Thin outer cylindrical sections extending outward.
+
+    Parameters
+    ----------
+    central_axial_length : float
+    """
+    if central_axial_length <= 0 or central_radius <= 0 or bottleneck_radius <= 0:
+        raise ValueError("Radii must be positive.")
+    if left_bottleneck_length <= 0 or right_bottleneck_length <= 0:
+        raise ValueError("Bottleneck lengths must be positive.")
+    if central_radius < bottleneck_radius:
+        raise ValueError("Central radius must be greater than bottleneck radius.")
+
+    first_plane_distance = central_axial_length / 2.0
+
+    right_outermost_plane_distance = first_plane_distance + right_bottleneck_length
+    left_outermost_plane_distance = -first_plane_distance - left_bottleneck_length
+
+    #--- Define Z-planes ---
+    #--- Central left plane ---
+    central_cylinder_left_plane = openmc.ZPlane(z0=axial_midplane - first_plane_distance)
+    #--- Central right plane ---
+    central_cylinder_right_plane = openmc.ZPlane(z0=axial_midplane + first_plane_distance)
+    #--- Left outermost plane ---
+    left_outer_cylinder_1 = openmc.ZPlane(z0=axial_midplane + left_outermost_plane_distance)
+    #--- Left cone plane ---
+    right_outer_cylinder_1 = openmc.ZPlane(z0=axial_midplane - first_plane_distance)
+    #--- Right outermost plane ---
+    left_outer_cylinder_2 = openmc.ZPlane(z0=axial_midplane + first_plane_distance)
+    #--- Right cone plane ---
+    right_outer_cylinder_2 = openmc.ZPlane(z0=axial_midplane + right_outermost_plane_distance)
+    
+    # --- Define cylinders ---
+    central_cell_cylinder = openmc.ZCylinder(r=central_radius)
+    outer_cylinder = openmc.ZCylinder(r=bottleneck_radius)
+    
+    # --- Build regions ---
+    central_cylinder = -central_cell_cylinder & +central_cylinder_left_plane & -central_cylinder_right_plane
+    left_outer_cylinders_region = -outer_cylinder & (+left_outer_cylinder_1 & -right_outer_cylinder_1)
+    right_outer_cylinders_region = -outer_cylinder & (+left_outer_cylinder_2 & -right_outer_cylinder_2)
+    outer_cylinders_region = left_outer_cylinders_region | right_outer_cylinders_region
+    
+    # Full vessel region ---
+    vessel_region = outer_cylinders_region | central_cylinder
+
+    # --- Return region and components for reference ---
+    components = {
+        'central_cylinder': central_cylinder,
+        'left_outer_cylinder': left_outer_cylinders_region,
+        'right_outer_cylinder': right_outer_cylinders_region,
+        'outer_cylinders': outer_cylinders_region,
+    }
+
+    return vessel_region, components
+
+
+# Styles for modular simple-mirror vacuum vessel (YAML: vacuum_vessel.geometry_style).
+SIMPLE_MIRROR_VV_STYLES = frozenset({"conical", "perpendicular"})
+
+
+def simple_mirror_vacuum_vessel_layer_region(
+    geometry_style,
+    outer_axial_length,
+    central_axial_length,
+    central_radius,
+    bottleneck_radius,
+    left_bottleneck_length,
+    right_bottleneck_length,
+    axial_midplane=0.0,
+):
+    """Return one vacuum-vessel layer (inner volume or scaled structural shell) for the simple mirror.
+
+    Parameters
+    ----------
+    geometry_style : str
+        ``conical`` — hourglass profile from :func:`single_vacuum_vessel_region` (default).
+        ``perpendicular`` — straight cylindrical/bottleneck profile from
+        :func:`perpendicular_vacuum_vessel_region` (no conical transition). ``outer_axial_length`` is
+        ignored for this style.
+    outer_axial_length, central_axial_length, central_radius, bottleneck_radius,
+    left_bottleneck_length, right_bottleneck_length, axial_midplane
+        Same units and meaning as :func:`single_vacuum_vessel_region`.
+
+    Returns
+    -------
+    tuple
+        ``(region, components)`` from the underlying builder.
+    """
+    style = (geometry_style or "conical").lower()
+    if style not in SIMPLE_MIRROR_VV_STYLES:
+        raise ValueError(
+            "vacuum_vessel.geometry_style must be one of "
+            f"{sorted(SIMPLE_MIRROR_VV_STYLES)}, got {geometry_style!r}"
+        )
+    if style == "conical":
+        return single_vacuum_vessel_region(
+            outer_axial_length,
+            central_axial_length,
+            central_radius,
+            bottleneck_radius,
+            left_bottleneck_length,
+            right_bottleneck_length,
+            axial_midplane,
+        )
+    return perpendicular_vacuum_vessel_region(
+        central_axial_length,
+        central_radius,
+        bottleneck_radius,
+        left_bottleneck_length,
+        right_bottleneck_length,
+        axial_midplane,
+    )

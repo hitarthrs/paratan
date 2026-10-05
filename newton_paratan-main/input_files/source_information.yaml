@@ -1,0 +1,7 @@
+settings:
+  particles_per_batch: 100000
+  batches: 10
+  statepoint_frequency: 10
+  weight_windows: false
+  photon_transport: false
+  tallies: true

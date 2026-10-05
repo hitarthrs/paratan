@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mirror-paratan-source"
+version = "0.1.0"
+description = "Magnetic mirror source model integrated with ParaTAN/OpenMC geometry infrastructure"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "scipy",
+    "pyyaml",
+    "matplotlib",
+    "h5py",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"source_model_revamp.nuclear_data.endf_b_viii1" = ["*.npz", "*.json"]

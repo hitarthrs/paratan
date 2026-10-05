@@ -1,0 +1,195 @@
+# ________________________________________ VACUUM VESSEL INFORMATION ________________________________________ #
+# This input file is designed for the single_vacuum_vessel_region function
+# Parameters match the new function signature for proper geometry construction
+
+vacuum_vessel:
+  # New single_vacuum_vessel_region parameters
+  geometry_style: "perpendicular" # Conical composite shape or "perpendicular" straight section
+  outer_axial_length: 450  # Total axial length of outer cylindrical segment (cm)
+  central_axial_length: 600  # Total axial length of central cylindrical section (cm)
+  central_radius: 75  # Radius of central cylindrical section (cm) / THIS CONTROLS RADIUS OF CENTRALLY LOCATED PLASMA REGION
+  bottleneck_radius: 25.0  # Radius of outer bottleneck cylindrical section (cm)
+  left_bottleneck_length: 350  # Axial length of left bottleneck section (cm)
+  right_bottleneck_length: 350  # Axial length of right bottleneck section (cm)
+  axial_midplane: 0.0  # Z-coordinate of midplane (cm)
+  
+  # Structural layers (optional - can be added later)
+  structure:
+    first_wall: 
+      thickness: 1.0
+      material: tungsten
+    vacuum_structure: 
+      thickness: 2.0
+      material: FW_FNSF
+
+# ________________________________________ CENTRAL CELL INFORMATION ________________________________________ #
+
+central_cell:
+  axial_length: 550  # Should match central_axial_length from vacuum vessel / THIS CONTROLS THE LENGTH OF THE BLANKET (AXIALLY)
+  layers:
+    - thickness: 90
+      material: eutectic_breeding_material  # Breeding Blanket
+    - thickness: 2
+      material: BW_FNSF  # Back Wall
+    - thickness: 30
+      material: HT_Shield_filler  # HT Shield Filler
+    - thickness: 2.5
+      material: water_cooled_wc  # HT Shield Back Plate
+
+  # Tallies commented out for initial geometry testing
+  # tallies:
+  #   breeder:
+  #     cell_tallies:
+  #       - scores: ['H3-production']
+  #         filters: ['neutron_filter']
+  #         nuclides: ['Li6', 'Li7']
+  #       - scores: ['flux', 'heating']
+  #         filters: ['neutron_filter']
+  #         nuclides: ['Li6', 'Li7']
+  #       - scores: ['absorption']
+  #         filters: ['fast_energies_filter']
+  #
+  #     mesh_tallies:
+  #       - scores: ['flux', 'heating']
+  #         filters: ['neutron_filter']
+  #         nuclides: ['Li6', 'Li7']
+  #         dimensions: [10,10,10]
+  #       - scores: ['absorption']
+  #         filters: ['fast_energies_filter']
+  #         dimensions: [3,6,12]
+  
+  tallies:
+    breeder:
+      mesh_tallies:
+        - scores: ['heating']
+          dimensions: [40, 1, 25]
+
+# ________________________________________ LF COIL PARAMETERS ________________________________________ #
+
+lf_coil:
+  shell_thicknesses:
+    front: 10
+    back: 5
+    axial: 10
+  inner_dimensions:
+    axial_length: 20
+    radial_thickness: 10
+  positions: [-75, 75]  # Coil center positions along the Z-axis
+  materials:
+    shield: stainless
+    magnet: Magnet_Winding_Pack_2
+
+  # Tallies commented out for initial geometry testing
+  # lf_coil_tallies:
+  #   cell_tallies:
+  #     - scores: ['flux', 'heating']
+  #       filters: ['neutron_filter']
+  #       nuclides: ['Li6', 'Li7']
+  #     - scores: ['absorption']
+  #       filters: ['fast_energies_filter']
+
+  #   mesh_tallies:
+  #     - scores: ['flux', 'heating']
+  #       filters: ['neutron_filter']
+  #       nuclides: ['Li6', 'Li7']
+  #       dimensions: [10,10,10]
+  #     - scores: ['absorption']
+  #       filters: ['fast_energies_filter']
+  #       dimensions: [3,6,12]
+
+# ________________________________________ HF COIL PARAMETERS ________________________________________ #
+
+hf_coil:
+  magnet:
+    bore_radius: 60
+    radial_thickness: 150
+    axial_thickness: 200
+    material: Magnet_Winding_Pack_2
+  casing_layers:
+    - thickness: 1
+      material: vacuum
+    - thickness: 1
+      material: ss316ln
+  shield:
+    radial_gap_before_casing: 1
+    shield_central_cell_gap: 5
+    radial_thickness: [30, 30]  # First value: towards central axis, second: away
+    axial_thickness: [20, 10]  # First value: towards midplane, second: away
+    material: cooled_tungsten_boride
+
+  # Tallies commented out for initial geometry testing
+  # hf_coil_tallies:
+    # cell_tallies:
+    #   - scores: ['heating']
+    #     filters: ['neutron_filter']
+    #     nuclides: ['Li6', 'Li7']
+    #   - scores: ['flux']
+    #     filters: ['neutron_filter']
+    #   - scores: ['absorption']
+    #     filters: ['fast_energies_filter']
+
+  #  mesh_tallies:
+      # - scores: ['heating']
+      #   filters: ['neutron_filter']
+      #   dimensions: [50,1,30]
+      # - scores: ['heating']
+      #   filters: ['photon_filter']
+      #  dimensions: [50,1,30]
+      # - scores: ['heating']
+      #   dimensions: [50,1,30]
+      # - scores: ['flux']
+      #   filters: ['neutron_filter', 'fast_energies_filter']
+      #   dimensions: [50,1,30]
+
+
+# ________________________________________ END CELL PARAMETERS ________________________________________ #
+
+end_cell:
+  axial_length: 500
+  shell_thickness: 3
+  diameter: 350
+  shell_material: stainless
+  inner_material: vacuum
+
+  # Tallies commented out for initial geometry testing
+  # end_cell_tallies:
+  #   cell_tallies:
+  #     - scores: ['flux', 'heating']
+  #       filters: ['neutron_filter']
+  #       nuclides: ['Li6', 'Li7']
+  #     - scores: ['absorption']
+  #       filters: ['fast_energies_filter']
+
+  #   mesh_tallies:
+  #     - scores: ['flux', 'heating']
+  #       filters: ['neutron_filter']
+  #       nuclides: ['Li6', 'Li7']
+  #       dimensions: [10,10,10]
+  #     - scores: ['absorption']
+  #       filters: ['fast_energies_filter']
+  #       dimensions: [3,6,12]
+
+# ________________________________________ NOTES ________________________________________ #
+# 
+# This input file is designed for testing the new single_vacuum_vessel_region function.
+# Key changes from the old format:
+# 
+# 1. Vacuum vessel parameters now match single_vacuum_vessel_region function signature
+# 2. All tallies are commented out for initial geometry testing
+# 3. Central cell axial_length matches vacuum vessel central_axial_length
+# 4. Parameters are designed to avoid geometry overlaps
+# 
+# Testing sequence:
+# 1. Test with only vacuum vessel (comment out other components)
+# 2. Add central cell
+# 3. Add LF coils  
+# 4. Add HF coils
+# 5. Add end cells
+# 6. Re-enable tallies one by one
+#
+ports:
+  ports_present: True
+  inner_radius: 25
+  port_layers_thicknesses: [2, 5]
+  port_layers_materials: [water_cooled_wc, Magnet_Winding_Pack_2]
+  port_x_limits: 250

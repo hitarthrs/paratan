@@ -1,0 +1,349 @@
+vacuum_vessel:
+  geometry_style: conical
+  outer_axial_length: 450.0
+  central_axial_length: 600.0
+  central_radius: 75.0
+  bottleneck_radius: 25.0
+  left_bottleneck_length: 350.0
+  right_bottleneck_length: 350.0
+  axial_midplane: 0.0
+  structure:
+    first_wall:
+      thickness: 1.0
+      material: tungsten
+    vacuum_structure:
+      thickness: 2.0
+      material: FW_FNSF
+
+central_cell:
+  axial_length: 550.0
+  layers:
+    - thickness: 77.0
+      material: eutectic_breeding_material
+    - thickness: 2.0
+      material: BW_FNSF
+    - thickness: 30.0
+      material: HT_Shield_filler
+    - thickness: 2.5
+      material: water_cooled_wc
+  tallies:
+    breeder:
+      cell_tallies:
+        - scores: [flux, heating]
+          filters: [neutron_filter]
+          nuclides: []
+      mesh_tallies:
+        - scores: [flux]
+          filters: [neutron_filter, fast_energies_filter]
+          nuclides: []
+          dimensions: [20, 1, 24]
+    layer_tallies:
+      - position: 1
+        cell_tallies:
+          - scores: [flux]
+            filters: [neutron_filter]
+            nuclides: []
+        mesh_tallies:
+          - scores: [heating]
+            filters: [neutron_filter]
+            nuclides: []
+            dimensions: [20, 1, 24]
+      - position: 2
+        cell_tallies:
+          - scores: [flux]
+            filters: [neutron_filter, vitaminj_filter]
+            nuclides: []
+        mesh_tallies: []
+
+lf_coil:
+  shell_thicknesses:
+    front: 10.0
+    back: 5.0
+    axial: 10.0
+  inner_dimensions:
+    axial_length: 20.0
+    radial_thickness: 10.0
+  positions: [-75.0, 75.0]
+  materials:
+    shield: stainless
+    magnet: Magnet_Winding_Pack_2
+  lf_coil_tallies:
+    cell_tallies:
+      - scores: [flux]
+        filters: [neutron_filter]
+        nuclides: []
+    mesh_tallies:
+      - scores: [heating]
+        filters: [neutron_filter]
+        nuclides: []
+        dimensions: [16, 1, 16]
+
+hf_coil:
+  magnet:
+    bore_radius: 60.0
+    radial_thickness: 150.0
+    axial_thickness: 200.0
+    material: Magnet_Winding_Pack_2
+  casing_layers:
+    - thickness: 1.0
+      material: vacuum
+    - thickness: 1.0
+      material: ss316ln
+  shield:
+    radial_gap_before_casing: 1.0
+    shield_central_cell_gap: 5.0
+    radial_thickness: [30.0, 30.0]
+    axial_thickness: [20.0, 10.0]
+    material: cooled_tungsten_boride
+  axial_offset_cm: 0.0
+  hf_coil_tallies:
+    cell_tallies:
+      - scores: [flux]
+        filters: [neutron_filter]
+        nuclides: []
+    mesh_tallies:
+      - scores: [heating]
+        filters: [neutron_filter]
+        nuclides: []
+        dimensions: [24, 1, 24]
+      - scores: [flux]
+        filters: [neutron_filter, fast_energies_filter]
+        nuclides: []
+        dimensions: [24, 1, 24]
+
+end_cell:
+  axial_length: 500.0
+  shell_thickness: 3.0
+  diameter: 350.0
+  hf_to_end_cell_gap_cm: 10.0
+  shell_material: stainless
+  inner_material: vacuum
+  end_cell_tallies:
+    cell_tallies:
+      - scores: [flux]
+        filters: [neutron_filter]
+        nuclides: []
+    mesh_tallies:
+      - scores: [flux]
+        filters: [neutron_filter]
+        nuclides: []
+        dimensions: [20, 1, 20]
+
+ports:
+  ports_present: true
+  inner_radius: 25.0
+  port_layers_thicknesses: [2.0, 5.0]
+  port_layers_materials: [water_cooled_wc, Magnet_Winding_Pack_2]
+  port_x_limits: 250.0
+
+#------------------------------#
+
+source_model:
+  model: single_beam_egedal_modal_fbis_openmc_source
+
+  geometry:
+    model: paratan_coil_field
+    domain_mode: geometry_linked
+    plasma_radius_m: 0.15
+    axial_bins: 12
+    field_strength:
+      midplane_B_T: 1.5
+      mirror_throat_B_T: 15.0
+    coil_field_grid_points: 1201
+
+  plasma_boundaries:
+    detection_mode: automatic_with_overrides
+    default_material_interface_role: absorbing
+    default_electrical_model: floating
+    overrides: []
+
+  plasma_closure:
+    model: maintained_background_quasineutral_electrons
+    background_ions:
+      deuterium_midplane_density_m3: 2.0e18
+      tritium_midplane_density_m3: 2.0e18
+      ion_temperature_keV: 10.0
+    electrons:
+      density_mode: quasineutral_from_total_positive_charge
+      density_initial_guess_m3: 5.0e18
+      temperature_initial_guess_keV: 6
+    background_profile:
+      model: uniform_central_cell
+
+  beams:
+    - id: d_nbi_1
+      enabled: true
+      model: geometry_linked_attenuation
+      species: deuterium
+      power_W: 5.0e6
+      energy_keV: 80.0
+      injection_angle_deg: 45.0
+      injection_pitch_source: beamline_endpoints
+      injection_angle_tolerance_deg: 1.0e-6
+      pitch_distribution_model: geometry_linked_finite_width
+      pitch_quadrature_points: 4
+      components:
+        - id: full
+          power_fraction: 0.7
+          energy_multiplier: 1.0
+        - id: half
+          power_fraction: 0.2
+          energy_multiplier: 0.5
+        - id: quarter
+          power_fraction: 0.1
+          energy_multiplier: 0.25
+      atomic_data_model: hydrogenic_dt_ground_state
+      channel: fast_ion_birth
+      beamline:
+        start_m: [-0.75, 0.0, -0.75]
+        end_m: [0.75, 0.0, 0.75]
+        radius_m: 0.05
+        divergence_half_angle_deg: 0.0
+        radial_overlap_model: hard_edge_overlap
+
+    - id: t_nbi_1
+      enabled: true
+      model: geometry_linked_attenuation
+      species: tritium
+      power_W: 5.0e6
+      energy_keV: 80.0
+      injection_angle_deg: 45.0
+      injection_pitch_source: beamline_endpoints
+      injection_angle_tolerance_deg: 1.0e-6
+      pitch_distribution_model: geometry_linked_finite_width
+      pitch_quadrature_points: 4
+      components:
+        - id: full
+          power_fraction: 0.7
+          energy_multiplier: 1.0
+        - id: half
+          power_fraction: 0.2
+          energy_multiplier: 0.5
+        - id: quarter
+          power_fraction: 0.1
+          energy_multiplier: 0.25
+      atomic_data_model: hydrogenic_dt_ground_state
+      channel: fast_ion_birth
+      beamline:
+        start_m: [0.75, 0.0, -0.75]
+        end_m: [-0.75, 0.0, 0.75]
+        radius_m: 0.05
+        divergence_half_angle_deg: 0.0
+        radial_overlap_model: hard_edge_overlap
+
+  kinetic_electrostatic:
+    electrostatic_feedback_model: egedal_2022_published_electrostatic_fbis_approximation
+    total_current_balance_iterations: 2
+    total_current_balance_relative_tolerance: 0.1
+    total_current_balance_relaxation: 1.0
+    total_current_balance_end_asymmetry_relative_tolerance: 0.05
+    expander_potential_iterations: 8
+    expander_potential_relative_tolerance: 0.01
+    expander_fast_nonterminal_fraction_tolerance: 0.001
+    expander_fast_throat_pitch_quantile_nodes: 16
+    expander_radial_profile_model: kotelnikov_parabolic_flux_k1
+    expander_unclosed_population_fraction_tolerance: 0.001
+    fast_fusion_burnup_relative_tolerance: 0.01
+    modal_eq42_density_weighting_model: self_consistent_quasineutral_density
+    speed_bins: 12
+    lambda_bins: 12
+    pitch_bins: 12
+
+    ion_loss_closure_model: egedal_hot_fixed_magnetic_boundary
+    lost_ion_parallel_temperature_model: baldwin_1972_throat_density_closure
+    negative_distribution_roundoff_tolerance: 1e-9
+    modal_reconstruction_negative_particle_fraction_tolerance: 0.001
+    modal_reconstruction_energy_correction_relative_tolerance: 0.005
+    speed_max_factor: 4.0
+    modal_speed_core_cell_fraction: 0.7
+    modal_speed_tail_stretch_power: 2.0
+    thermal_speed_bins: 12
+    thermal_speed_max_factor: 5.0
+    modal_n_lambda_grid: 41
+    modal_n_eta_grid: 33
+    modal_n_square_basis_modes: 12
+    modal_n_physical_modes: 8
+    modal_square_scan_points: 1000
+    modal_velocity_solution_model: hot_ion_rosenbluth_eq59
+    modal_phi_z_iterations: 5
+    modal_phi_z_root_scan_points: 17
+    modal_phi_z_relative_tolerance: 0.1
+    modal_phi_z_relaxation: 0.8
+    modal_density_closure_model: maintained_background_quasineutral_electrons
+    modal_density_closure_iterations: 5
+    modal_density_closure_relative_tolerance: 0.1
+    modal_density_closure_relaxation: 1.0
+    modal_rosenbluth_max_iterations: 30
+    modal_rosenbluth_relative_tolerance: 0.1
+    modal_rosenbluth_absolute_tolerance: 0.0
+    modal_rosenbluth_relaxation: 0.8
+    modal_rosenbluth_min_iterations: 2
+    modal_rosenbluth_high_speed_tail_population_tolerance: 0.1
+    modal_rosenbluth_high_speed_tail_energy_tolerance: 0.1
+    modal_rosenbluth_speed_convergence_relative_tolerance: 0.01
+    modal_retained_mode_relative_tolerance: 0.1
+    modal_local_speed_refinement_relative_tolerance: 0.1
+    modal_local_velocity_quadrature_order: 8
+    modal_phi_z_low_energy_weight_fraction_tolerance: 0.1
+    modal_basis_convergence_levels: 1
+    modal_basis_eigenvalue_relative_tolerance: 0.5
+    modal_basis_eigenfunction_overlap_tolerance: 0.995
+    modal_loss_convention_relative_tolerance: 0.1
+    modal_source_projection_relative_tolerance: 0.1
+    modal_electrostatic_feedback_iterations: 4
+    modal_electrostatic_feedback_relative_tolerance: 0.1
+    modal_eq42_density_basis_iterations: 3
+    modal_eq42_density_shape_relative_tolerance: 0.1
+    modal_eq42_density_shape_relaxation: 0.5
+    modal_eq42_basis_eigenvalue_relative_tolerance: 0.05
+    modal_eq42_basis_eigenfunction_overlap_tolerance: 0.995
+    modal_eq42_density_symmetry_tolerance: 0.01
+  beam_density_coupling:
+    max_iterations: 5
+    electron_profile_relative_tolerance: 0.05
+    total_birth_rate_relative_tolerance: 0.05
+    deposited_power_relative_tolerance: 0.05
+    axial_birth_profile_relative_tolerance: 0.05
+    energy_component_deposition_relative_tolerance: 0.05
+    target_density_relaxation: 1.0
+    electron_profile_volume_L2_relative_tolerance: 0.05
+    electron_profile_absolute_reference_tolerance: 0.05
+    density_floor_absolute_m3: 0.0
+    density_floor_reference_fraction: 1e-12
+    birth_profile_floor_absolute_m3_s: 0.0
+    birth_profile_floor_reference_fraction: 1e-12
+    component_power_floor_absolute_W: 0.0
+    component_power_floor_reference_fraction: 1e-12
+  power_balance:
+    #electron_temperature_mode: fixed_closure
+    electron_temperature_mode: self_consistent_electron_energy
+    external_electron_heating_W: 0.0
+    bracket_min_keV: 4
+    bracket_max_keV: 8
+    bracket_scan_points: 5
+    max_iterations: 7
+    residual_tolerance_W: 1e-03
+    relative_residual_tolerance: 0.1
+    root_temperature_relative_tolerance: 0.1
+  fusion:
+    include_fast_thermal: true
+    include_fast_fast: true
+    include_thermal_thermal: true
+    max_pair_states_per_batch: 262144
+
+  neutrons:
+    model: distribution_kinematics_spectrum
+    energy_bins: 12
+    angular_model: endf_b_viii1_evaluated_cm
+    correlated_event_count: 10000
+    correlated_event_seed: 12345
+    radial_source_profile_model: kotelnikov_parabolic_flux_k1
+    max_pair_states_per_batch: 131072
+
+  openmc_export:
+    source_output_directory: openmc_source
+    source_filename: source.h5
+    validity_filename: source_file_validity.json
+    sampling_metadata_filename: source_sampling_metadata.json
+    source_time_s: 0.0
+    overwrite_existing: false

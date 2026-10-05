@@ -1,0 +1,54 @@
+# Files to ignore
+*.zip
+*.pyc
+*.sh
+*.h5
+*.out
+*.log
+
+# Python cache and build artifacts
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+build/
+dist/
+
+# Editor and operating system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Generated run data
+SLURM/
+jobs/
+runs/
+cross_sections/
+
+# Development only inputs
+input_files/runtime_density_fixed_point_sweep/
+input_files/runtime_beam_density_fixed_point_sweep/
+input_files/runtime_beam_density_final_consistency_diagnostic.yaml
+input_files/smoke.yaml
+
+# r2s activation work
+input_files/r2s_inputs/
+scripts/r2s_work/
+
+# Development and diagnostic tools
+tools/_thermal_boundary_face_reconstruction.py
+tools/diagnose*
+tools/compare*
+tools/prepare*
+tools/report*
+tools/inspect*
+tools/audits/
+tools/diagnostics/
+tools/parameter_scans/
+tools/plot_checks/
+tools/benchmarks/
