@@ -1,3 +1,10 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from functools import reduce
+from operator import or_
+import math
+
 import openmc
 import numpy as np
 import openmc.lib
@@ -890,6 +897,56 @@ def annular_shell_region(z0, inner_radius, radial_thickness, axial_length, orien
     raise ValueError("Orientation must be 'right' or 'left'.")
 
 
+def half_annular_axial_channels(
+    z0: float,
+    inner_radius: float,
+    radial_thickness: float,
+    axial_length: float,
+    n_channels: int,
+    *,
+    rib_angle_deg: float = 1.0,
+    side_wall_angle_deg: float = 2.0,
+    orientation: str = "right",
+) -> tuple[tuple[openmc.Region, ...], tuple[tuple[float, float], ...]]:
+    """Separate a half-annular layer into axial ducts with steel azimuthal webs.
+
+    Each duct spans the whole z length. Angular side margins and intervening
+    ribs remain available for structure when ducts are subtracted from the
+    parent shell. Angles returned in radians increase across the half-annulus.
+    """
+    if isinstance(n_channels, bool) or not isinstance(n_channels, int) or n_channels < 1:
+        raise ValueError("n_channels must be a positive integer")
+    if not math.isfinite(rib_angle_deg) or not math.isfinite(side_wall_angle_deg):
+        raise ValueError("channel angles must be finite")
+    if rib_angle_deg < 0 or side_wall_angle_deg < 0:
+        raise ValueError("channel angles must be non-negative")
+    free_angle = 180.0 - 2 * side_wall_angle_deg - (n_channels - 1) * rib_angle_deg
+    if free_angle <= 0:
+        raise ValueError("channel angles leave no open duct width")
+    if orientation == "right":
+        first_angle = -90.0
+    elif orientation == "left":
+        first_angle = 90.0
+    else:
+        raise ValueError("orientation must be 'left' or 'right'")
+
+    envelope = annular_shell_region(
+        z0, inner_radius, radial_thickness, axial_length, orientation,
+    )
+    width = free_angle / n_channels
+    channels = []
+    bounds = []
+    for index in range(n_channels):
+        lo = math.radians(first_angle + side_wall_angle_deg + index * (width + rib_angle_deg))
+        hi = lo + math.radians(width)
+        # Signed distance from a ray at angle theta is r sin(phi - theta).
+        lower = openmc.Plane(a=-math.sin(lo), b=math.cos(lo), c=0.0, d=0.0)
+        upper = openmc.Plane(a=-math.sin(hi), b=math.cos(hi), c=0.0, d=0.0)
+        channels.append(envelope & +lower & -upper)
+        bounds.append((lo, hi))
+    return tuple(channels), tuple(bounds)
+
+
 def axial_segment_centers(z0: float, axial_length: float, n_segments: int) -> tuple[float, ...]:
     """Return midpoints of ``n_segments`` equal slices tiling ``[z0 - L/2, z0 + L/2]``.
 
@@ -1081,5 +1138,135 @@ def annular_shell_channel_grid(
         "axial_end_thickness": axial_end_thickness,
         "n_axial": n_axial,
         "n_radial": n_radial,
+    }
+    return tuple(channels), layout
+
+
+@dataclass(frozen=True)
+class ChannelRowSpec:
+    """One radial channel row: axial count and radial channel height (cm)."""
+
+    n_channels: int
+    radial_thickness: float
+
+    def __post_init__(self) -> None:
+        if self.n_channels < 1:
+            raise ValueError("ChannelRowSpec.n_channels must be >= 1")
+        if self.radial_thickness <= 0:
+            raise ValueError("ChannelRowSpec.radial_thickness must be positive")
+
+
+def annular_shell_structure(
+    envelope: openmc.Region,
+    channels: tuple[openmc.Region, ...] | list[openmc.Region],
+) -> openmc.Region:
+    """Return ``envelope`` minus the union of ``channels`` (structure / webs)."""
+    if not channels:
+        return envelope
+    return envelope & ~reduce(or_, channels)
+
+
+def annular_shell_channel_rows(
+    z0: float,
+    axial_length: float,
+    *,
+    pack_inner_radius: float,
+    front_thickness: float,
+    back_thickness: float,
+    radial_gap: float,
+    rows: tuple[ChannelRowSpec, ...] | list[ChannelRowSpec],
+    axial_gap: float = 0.0,
+    axial_end_thickness: float = 0.0,
+    orientation: str = "right",
+) -> tuple[tuple[openmc.Region, ...], dict[str, object]]:
+    """Pack unequal radial rows of annular channels inside a half-annular shell.
+
+    Each row has its own ``n_channels`` and ``radial_thickness``. Axial packing
+    for a row uses :func:`axial_channel_centers_and_length` independently, so
+    rows with more channels get shorter axial segments.
+
+    Radial layout::
+
+        [front][row0][gap][row1]...[gap][rowN][back]
+
+    Returns
+    -------
+    channels
+        Flat tuple, row-major (radial slowest, axial fastest).
+    layout
+        Packing metadata including per-row z centers and the pack radial thickness.
+    """
+    if pack_inner_radius <= 0:
+        raise ValueError("pack_inner_radius must be positive")
+    if axial_length <= 0:
+        raise ValueError("axial_length must be positive")
+    if min(front_thickness, back_thickness) <= 0:
+        raise ValueError("front_thickness and back_thickness must be positive")
+    if radial_gap < 0 or axial_gap < 0 or axial_end_thickness < 0:
+        raise ValueError("gaps and end thickness must be >= 0")
+    if not rows:
+        return (), {
+            "row_inner_radii": (),
+            "row_layouts": (),
+            "pack_radial_thickness": 0.0,
+            "front_thickness": front_thickness,
+            "back_thickness": back_thickness,
+            "radial_gap": radial_gap,
+            "axial_gap": axial_gap,
+            "axial_end_thickness": axial_end_thickness,
+        }
+
+    channel_sum = sum(row.radial_thickness for row in rows)
+    gaps = (len(rows) - 1) * radial_gap
+    pack_radial_thickness = front_thickness + channel_sum + gaps + back_thickness
+
+    channels: list[openmc.Region] = []
+    row_inner_radii: list[float] = []
+    row_layouts: list[dict[str, object]] = []
+
+    r_inner = pack_inner_radius + front_thickness
+    for row_index, row in enumerate(rows):
+        z_centers, channel_axial_length = axial_channel_centers_and_length(
+            z0=z0,
+            axial_length=axial_length,
+            n_axial=row.n_channels,
+            axial_gap=axial_gap,
+            axial_end_thickness=axial_end_thickness,
+        )
+        row_inner_radii.append(r_inner)
+        for z_center in z_centers:
+            channels.append(
+                annular_shell_region(
+                    z0=z_center,
+                    inner_radius=r_inner,
+                    radial_thickness=row.radial_thickness,
+                    axial_length=channel_axial_length,
+                    orientation=orientation,
+                )
+            )
+        row_layouts.append(
+            {
+                "row_index": row_index,
+                "n_channels": row.n_channels,
+                "radial_thickness": row.radial_thickness,
+                "inner_radius": r_inner,
+                "outer_radius": r_inner + row.radial_thickness,
+                "z_centers": z_centers,
+                "channel_axial_length": channel_axial_length,
+            }
+        )
+        r_inner += row.radial_thickness
+        if row_index < len(rows) - 1:
+            r_inner += radial_gap
+
+    layout: dict[str, object] = {
+        "row_inner_radii": tuple(row_inner_radii),
+        "row_layouts": tuple(row_layouts),
+        "pack_radial_thickness": pack_radial_thickness,
+        "front_thickness": front_thickness,
+        "back_thickness": back_thickness,
+        "radial_gap": radial_gap,
+        "axial_gap": axial_gap,
+        "axial_end_thickness": axial_end_thickness,
     }
     return tuple(channels), layout

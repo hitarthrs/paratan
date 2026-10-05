@@ -251,6 +251,13 @@ helium_8mpa = openmc.Material(1100, name="helium gas 8 MPa, 450C")
 helium_8mpa.set_density("kg/m3", 5.323)
 helium_8mpa.add_element("He", 100)
 
+# Homogeneous SiC proxy for a DCLL flow-channel insert. Fibre architecture,
+# porosity, and irradiation-dependent properties require a later material model.
+silicon_carbide_fci = openmc.Material(name="SiC flow-channel insert (proxy)")
+silicon_carbide_fci.set_density("g/cm3", 3.2)
+silicon_carbide_fci.add_element("Si", 1.0, "ao")
+silicon_carbide_fci.add_element("C", 1.0, "ao")
+
 # Portland Concrete
 # Source: https://physics.nist.gov/cgi-bin/Star/compos.pl?matno=144
 
@@ -602,7 +609,7 @@ Magnet_Winding_Pack_2 = openmc.Material.mix_materials([rebco_tape, copper, stain
 materials_list = [vacuum, air, deuterium, aluminum_6061, stainless, beryllium, lead, LiH, LiD,
                   rebco, magnet, tungsten, crispy, water, he_cooled_rafm, iron, lithium,
                   cooled_tungsten, tungsten_carbide, cooled_tungsten_carbide,
-                  rafm_steel, LiPb_breeder, rings, tungsten_boride, WB2, w2b5, cooled_w2b5,
+                  rafm_steel, silicon_carbide_fci, LiPb_breeder, rings, tungsten_boride, WB2, w2b5, cooled_w2b5,
                   TiH2, cooled_TiH2, zirconium_hydride, water_cooled_wc, copper, hastelloy, flibe, tantalum,
                   tantalum_hydride_55, tantalum_hydride_30, cooled_rafm_steel, Nak_77, potassium, KCl,
                   HfH2, titanium, MgO, MgO_HfH2, Fe_HfH2_WB2, Ti_HfH2, B4C, enriched_lithium, lithium_metatitanate, lithium_orthosilicate, he_cooled_tungsten_carbide
