@@ -61,8 +61,6 @@ run.py
 geometry.xml
 make_source_files_tbr.py
 
-paratan
-
 # Allow images in examples/
 !examples/**/*.png
 !examples/**/*.jpg
@@ -87,3 +85,6 @@ compare_hf_study_runs/
 
 simple_mirror_big_parametric_study/
 simple_mirror_study_shield_dimensions_materials/
+
+# Local geometry smoke tests / trials
+src/paratan/geometry/testing/
