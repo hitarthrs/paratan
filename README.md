@@ -1,4 +1,6 @@
-# paratan
+<p align="center">
+  <img src="docs/logo/paratan-lockup-tagline.svg" alt="ParaTAN — Parametric Neutronics for Magnetic Mirrors" width="520" />
+</p>
 
 **Paratan** is a lightweight OpenMC wrapper designed for rapid parametric modeling of tandem mirror fusion devices. It simplifies geometry construction, material assignment, and source specification, enabling easy setup and iteration of neutronics simulations. Built for early-stage design and analysis, **Paratan** helps researchers and engineers explore design spaces efficiently.
 
