@@ -595,7 +595,14 @@ cooled_w2b5_shield.add_s_alpha_beta('c_H_in_H2O', 0.66666*shield_coolant_percent
 cooled_wc_shield = openmc.Material.mix_materials([tungsten_carbide, water], [1-shield_coolant_percent, shield_coolant_percent], 'vo')
 cooled_wc_shield.add_s_alpha_beta('c_H_in_H2O', 0.66666*shield_coolant_percent)
 
-rebco_tape = openmc.Material.mix_materials([copper, silver, rebco, lamno3, MgO, yttrium_oxide, alumina, hastelloy], [0.1312508, 0.05250033, 0.02625016, 0.000525, 0.00131251, 0.00013125, 0.000525, 0.7875049], 'vo', name='REBCO Tape')
+# Normalize rounded constituent fractions: this solid tape has no intended void.
+rebco_tape_fractions = [0.1312508, 0.05250033, 0.02625016, 0.000525,
+                       0.00131251, 0.00013125, 0.000525, 0.7875049]
+rebco_tape_fraction_sum = sum(rebco_tape_fractions)
+rebco_tape = openmc.Material.mix_materials(
+    [copper, silver, rebco, lamno3, MgO, yttrium_oxide, alumina, hastelloy],
+    [fraction / rebco_tape_fraction_sum for fraction in rebco_tape_fractions],
+    'vo', name='REBCO Tape')
 rebco_tape.id = 125
 
 Magnet_Winding_Pack_2 = openmc.Material.mix_materials([rebco_tape, copper, stainless], [0.08, 0.459, 0.461], 'vo', name='Magnet Winding Pack 2.0')
