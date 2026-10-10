@@ -29,6 +29,10 @@ analyze_statepoint.py
 !src/paratan/viewer/static/**
 !src/paratan/viewer/simple_mirror_preview.png
 
+# Keep docs logo pack
+!docs/logo/
+!docs/logo/**
+
 # Example directories
 hitarthNWLexample/
 
