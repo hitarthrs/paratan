@@ -36,6 +36,7 @@ from src.paratan.viewer.results import load_statepoint, TallyDataset
 from src.paratan.viewer.presets import validate_view
 from src.paratan.viewer.inspection import setup_example, tally_configuration
 from src.paratan.viewer.labels import GROUP_LABELS, material_label, meta_row
+from src.paratan.viewer.materials_catalog import MaterialCatalog, default_catalog
 
 def _rgb_css(rgb: tuple[float, float, float]) -> str:
     r, g, b = (int(255 * c) for c in rgb)
@@ -58,6 +59,7 @@ class ViewerApp(ViewerUI):
         self._cut_warming = False
         self._upload_started = None
         self._model_cache = OrderedDict()
+        self.materials_catalog: MaterialCatalog = default_catalog()
 
         pl = self.pl = pv.Plotter(notebook=False, off_screen=True)
         pl.set_background("white")
@@ -77,6 +79,9 @@ class ViewerApp(ViewerUI):
         self._install(build_model(path.read_text(), path.name, n_theta))
         self._bind()
         self._build_ui(render_mode)
+        # _install runs before plotter_ui exists; publish once the view is wired.
+        self._refresh()
+        self._push(geometry=True, camera=True)
         self.ctrl.on_server_bind.add(self._bind_upload_http)
 
     @property
@@ -155,6 +160,7 @@ class ViewerApp(ViewerUI):
         s.update({
             "n_components": 0, "model_name": "", "load_status": "", "upload_file": None,
             "upload_busy": False, "upload_phase": "idle", "upload_notice": False,
+            "upload_drag_over": False,
             "cuts_ready": False,
             "legend_items": [], "explode": 0.0, "panel": "geometry", "search": "",
             "selected_name": "", "selected_label": "", "has_selection": False, "selected_opacity": 1.0,
@@ -171,10 +177,14 @@ class ViewerApp(ViewerUI):
             "result_summary": "", "result_choices": [], "statepoint_path": "", "simulation_manifest_path": "",
             "statepoint_tally_id": 0, "statepoint_score": "heating", "statepoint_nuclide": "total",
             "statepoint_filter_bins": "{}", "result_quantity": "mean", "result_id": "",
+            "materials_panel_open": False, "materials_items": [], "materials_search": "",
+            "materials_source": "", "materials_status": "", "materials_selected_key": "",
+            "materials_detail_label": "", "materials_detail_density": "", "materials_detail_id": "—",
+            "materials_composition": [],
         })
         # The browser may show immediate reading feedback, but must never send
         # stale loading text back over the server's final success/error state.
-        s.client_only('upload_busy', 'upload_phase', 'upload_notice', 'load_status')
+        s.client_only('upload_busy', 'upload_phase', 'upload_notice', 'load_status', 'upload_drag_over')
 
     # ------------------------------------------------------------------ model
     def _install(self, model: Model) -> None:
@@ -198,6 +208,8 @@ class ViewerApp(ViewerUI):
             setattr(s, f"vis_{g}", True)
         materials = sorted({c.material for c in model.components}, key=str.lower)
         s.legend_items = [{"name": material_label(m), "color": _rgb_css(color_for_material(m))} for m in materials]
+        self._publish_model_materials(materials)
+        self._clear_material_detail()
         s.n_components = len(model.components)
         s.model_name = model.name
         s.device_label = model.device_label
@@ -754,7 +766,9 @@ class ViewerApp(ViewerUI):
         state, ctrl = self.state, self.ctrl
         for name in ("reset_view", "clear_selection", "hide_selected", "toggle_solo", "cam_side", "cam_end",
                      "cam_iso", "cam_fit_selected", "set_section_mode", "step_slice", "save_preset",
-                     "restore_preset", "delete_preset", "import_presets", "export_png", "select_component", "load_results", "clear_results", "load_example", "view_hf_tally", "view_cylindrical_tally"):
+                     "restore_preset", "delete_preset", "import_presets", "export_png", "select_component",
+                     "load_results", "clear_results", "load_example", "view_hf_tally", "view_cylindrical_tally",
+                     "toggle_materials_panel", "select_material"):
             setattr(ctrl, name, getattr(self, name))
         ctrl.show_all_components = self.show_all
         ctrl.face_slice = self.aim_at_cut
@@ -763,7 +777,9 @@ class ViewerApp(ViewerUI):
         def _ready(**_kwargs: Any) -> None:
             self._refresh()
             self.pl.reset_camera()
-            self._push(camera=True)
+            # geometry=True: initial install runs before plotter_ui exists, so the
+            # first client connect must publish the scene (camera-only leaves a blank canvas).
+            self._push(geometry=True, camera=True)
 
         refresh = lambda **_kw: self._refresh()  # noqa: E731
         for g in GROUPS:
@@ -785,6 +801,75 @@ class ViewerApp(ViewerUI):
         if self.state.slice_phi_on or self.state.slice_z_on:
             self.aim_at_cut()
 
+    # -------------------------------------------------------------- materials
+    def toggle_materials_panel(self) -> None:
+        s = self.state
+        opening = not bool(s.materials_panel_open)
+        s.materials_panel_open = opening
+        if opening:
+            # List = materials used by the loaded model; composition only after a click.
+            if self.model is not None:
+                materials = sorted({c.material for c in self.model.components}, key=str.lower)
+                self._publish_model_materials(materials)
+            self._clear_material_detail()
+            s.materials_status = (
+                f"{len(s.materials_items)} in this model · click for OpenMC composition"
+            )
+
+    def select_material(self, key: str) -> None:
+        """Show OpenMC composition for a model-legend material (resolved via catalog)."""
+        s = self.state
+        raw = str(key)
+        s.materials_selected_key = raw
+        s.materials_detail_label = material_label(raw)
+        s.materials_status = "Loading composition…"
+        try:
+            self.materials_catalog.ensure_loaded()
+            s.materials_source = self.materials_catalog.source_label
+            record = self.materials_catalog.resolve(raw) or self.materials_catalog.get(raw)
+        except Exception as exc:  # noqa: BLE001
+            self._clear_material_detail(keep_key=raw)
+            s.materials_detail_label = material_label(raw)
+            s.materials_status = f"Could not load composition: {exc}"
+            return
+        if record is None:
+            self._clear_material_detail(keep_key=raw)
+            s.materials_detail_label = material_label(raw)
+            s.materials_detail_density = "not in materials library"
+            s.materials_status = f"No OpenMC definition matched “{raw}”"
+            return
+        detail = record.to_detail()
+        dens = detail["density"]
+        units = detail["density_units"]
+        dens_label = f"{dens:g} {units}".strip() if dens is not None else "density unavailable"
+        s.materials_detail_label = detail["label"]
+        s.materials_detail_density = dens_label
+        s.materials_detail_id = detail["openmc_id"] if detail["openmc_id"] is not None else "—"
+        s.materials_composition = detail["composition"]
+        s.materials_status = ""
+
+    def _publish_model_materials(self, materials: list[str]) -> None:
+        """Legend-order list of materials present on the current device model."""
+        s = self.state
+        s.materials_items = [
+            {
+                "key": m,
+                "label": material_label(m),
+                "color": _rgb_css(color_for_material(m)),
+            }
+            for m in materials
+        ]
+        s.materials_source = "materials used in this model"
+
+    def _clear_material_detail(self, *, keep_key: str = "") -> None:
+        s = self.state
+        s.materials_selected_key = keep_key
+        if not keep_key:
+            s.materials_detail_label = ""
+        s.materials_detail_density = ""
+        s.materials_detail_id = "—"
+        s.materials_composition = []
+
     # ---------------------------------------------------------------------- UI
 
 def create_app(input_yaml: str | Path, *, n_theta: int = 96, server_name: str = "paratan-viewer",
@@ -803,6 +888,18 @@ def create_app(input_yaml: str | Path, *, n_theta: int = 96, server_name: str = 
     return app.server
 
 def run_app(input_yaml: str | Path, *, host: str = "127.0.0.1", port: int = 8080, n_theta: int = 96,
-            open_browser: bool = True, render_mode: str = "trame") -> None:
+            open_browser: bool = True, render_mode: str = "trame", timeout: int = 2) -> None:
+    """Serve the viewer until the last browser client disconnects.
+
+    ``timeout`` is the idle reap delay in seconds after no clients remain
+    (and also before the first client connects). Use ``0`` to keep the
+    process alive until Ctrl-C.
+    """
     server = create_app(input_yaml, n_theta=n_theta, render_mode=render_mode)
-    server.start(host=host, port=port, open_browser=open_browser, exec_mode="main")
+    server.start(
+        host=host,
+        port=port,
+        open_browser=open_browser,
+        exec_mode="main",
+        timeout=timeout,
+    )

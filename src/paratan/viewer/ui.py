@@ -10,20 +10,50 @@ from src.paratan.viewer.labels import GROUP_LABELS
 from trame_client.widgets.core import AbstractElement
 from src.paratan.viewer import transport
 
+# Brand tokens from docs/logo/README.txt
+_UW_RED = "#C5050C"
+_UW_WHITE = "#FFFFFF"
+
+
 class ViewerUI:
     def _build_ui(self, render_mode: str) -> None:
         server, ctrl, pl = self.server, self.ctrl, self.pl
         server.enable_module(transport)
+        static = Path(__file__).with_name("static")
+        # Reversed icon (white tile) for the red app bar; red tile for the favicon.
+        logo_bar = static / "paratan-icon-reversed.svg"
+        logo_fav = static / "paratan-icon.svg"
+        logo_uri = "data:image/svg+xml;base64," + base64.b64encode(logo_bar.read_bytes()).decode("ascii")
+        fav_uri = "data:image/svg+xml;base64," + base64.b64encode(logo_fav.read_bytes()).decode("ascii")
         with SinglePageLayout(server) as layout:
-            logo_path = Path(__file__).with_name("static") / "paratan-icon.svg"
-            logo_uri = "data:image/svg+xml;base64," + base64.b64encode(logo_path.read_bytes()).decode("ascii")
-            server.state.trame__favicon = logo_uri
+            server.state.trame__favicon = fav_uri
+            client.Style(
+                "@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,700&display=swap');\n"
+                ".paratan-appbar{background:" + _UW_RED + "!important;color:" + _UW_WHITE + "!important;"
+                "border-bottom:none!important;box-shadow:none!important;}\n"
+                ".paratan-appbar .v-toolbar-title{color:" + _UW_WHITE + "!important;}\n"
+                ".paratan-brand{font-family:'Source Serif 4','Source Serif Pro',Georgia,serif;"
+                "color:" + _UW_WHITE + ";letter-spacing:.02em;line-height:1;}\n"
+                ".paratan-brand .para{font-weight:400;}\n"
+                ".paratan-brand .tan{font-weight:700;}\n"
+                ".paratan-brand .rest{font-weight:400;opacity:.92;}\n"
+                ".paratan-appbar .v-btn{color:" + _UW_WHITE + "!important;}\n"
+                ".paratan-appbar .v-chip{background:rgba(255,255,255,.18)!important;color:"
+                + _UW_WHITE + "!important;border-color:rgba(255,255,255,.35)!important;}\n"
+                ".paratan-dropzone{padding:10px;border:1px solid #cbd5e1;border-radius:6px;"
+                "background:#fff;transition:border-color .15s ease,background .15s ease,box-shadow .15s ease;}\n"
+                ".paratan-dropzone--active{border:2px solid " + _UW_RED + "!important;"
+                "background:rgba(197,5,12,.04);box-shadow:inset 0 0 0 1px " + _UW_RED + ";}\n"
+            )
             layout.title.set_text("")
             with layout.title:
                 with html.Div(style="display:flex;align-items:center;gap:10px;white-space:nowrap;"):
-                    html.Img(src=logo_uri, alt="Paratan logo", width=32, height=32,
+                    html.Img(src=logo_uri, alt="ParaTAN logo", width=32, height=32,
                              style="display:block;flex-shrink:0;")
-                    html.Span("PARATAN · Geometry studio")
+                    with html.Span(classes="paratan-brand", style="font-size:18px;"):
+                        html.Span("Para", classes="para")
+                        html.Span("TAN", classes="tan")
+                        html.Span(" Geometry studio", classes="rest")
             layout.root.style = "height:100vh; overflow:hidden; background:#f1f5f9; color:#172b4d;"
             with vuetify.VSnackbar(v_model=('upload_notice', False), timeout=8000,
                                   color=("upload_phase === 'error' ? 'error' : 'success'",), location='bottom right'):
@@ -32,15 +62,19 @@ class ViewerUI:
                     vuetify.VBtn('Close', click='upload_notice = false', variant='text')
             with layout.toolbar as toolbar:
                 toolbar.density = "compact"
+                toolbar.color = _UW_RED
+                toolbar.classes = "paratan-appbar"
+                toolbar.elevation = 0
                 vuetify.VSpacer()
-                vuetify.VChip("{{ n_components }} parts · cm", size="small", variant="tonal")
+                vuetify.VChip("{{ n_components }} parts · cm", size="small", variant="outlined")
                 with vuetify.VMenu():
                     with vuetify.Template(v_slot_activator="{ props }"):
                         vuetify.VBtn(
                             "{{ slice_phi_on || slice_z_on ? 'Cut: slice' : (section_mode === 'half' ? 'Cut: half' : "
                             "(section_mode === 'quarter' ? 'Cut: quarter' : 'Cut')) }}",
                             v_bind="props", variant="text", size="small", append_icon="mdi-chevron-down",
-                            loading=('!cuts_ready',), disabled=('!cuts_ready',))
+                            loading=('!cuts_ready',), disabled=('!cuts_ready',),
+                            style=f"color:{_UW_WHITE};")
                     with vuetify.VList(density="compact"):
                         for value, label in MODE_LABELS:
                             vuetify.VListItem(title=label, click=(ctrl.set_section_mode, f"['{value}']"),
@@ -49,9 +83,14 @@ class ViewerUI:
                         html.Div("A slice plane (Inspect) sets the cut while it is on.",
                                  v_if="slice_phi_on || slice_z_on", classes="text-caption px-4 pb-2",
                                  style="color:#64748b;max-width:220px;")
-                for label, action in (("Side", ctrl.cam_side), ("End", ctrl.cam_end), ("Iso", ctrl.cam_iso),
-                                      ("Fit selection", ctrl.cam_fit_selected), ("Reset", ctrl.reset_view)):
-                    vuetify.VBtn(label, click=action, variant="text", size="small")
+                vuetify.VBtn(
+                    "Materials",
+                    click=ctrl.toggle_materials_panel,
+                    variant="text",
+                    size="small",
+                    style=f"color:{_UW_WHITE};",
+                    active=("materials_panel_open",),
+                )
             with layout.content:
                 layout.content.style = "height:100vh; padding:48px 0 22px; box-sizing:border-box; overflow:hidden;"
                 with html.Div(style="display:flex; height:100%;"):
@@ -100,6 +139,74 @@ class ViewerUI:
                         html.Div("{{ selected_label || 'Orbit to explore · select a part to inspect' }}",
                                  style="position:absolute;bottom:18px;left:18px;background:rgba(255,255,255,.92);"
                                        "padding:8px 12px;border-radius:8px;font-size:12px;pointer-events:none;")
+                    self._materials_panel()
+
+    def _materials_panel(self) -> None:
+        """Right drawer: catalog list + OpenMC composition for the selected material."""
+        ctrl = self.ctrl
+        with html.Div(
+            v_show="materials_panel_open",
+            style="width:360px; min-width:280px; max-width:42vw; height:100%; overflow-y:auto; "
+                  "background:white; border-left:1px solid #dbe3ed; padding:16px; flex:none;",
+        ):
+            with html.Div(style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;"):
+                with html.Div():
+                    html.Div("Materials", classes="text-subtitle-2")
+                    html.Div("{{ materials_source }}", classes="text-caption", style="color:#64748b;")
+                vuetify.VBtn(icon="mdi-close", variant="text", size="small", click=ctrl.toggle_materials_panel,
+                             title="Close materials panel")
+            html.Div(v_if="materials_status", classes="text-caption mt-2", style="color:#64748b;")
+            html.Div("LEGEND", classes="text-overline mt-3")
+            with html.Div(style="margin-top:4px;"):
+                with html.Div(v_for="item in materials_items", key="item.key", classes="mb-1"):
+                    with vuetify.VBtn(
+                        click=(ctrl.select_material, "[item.key]"),
+                        block=True,
+                        size="small",
+                        variant=("materials_selected_key === item.key ? 'tonal' : 'text'",),
+                        color=("materials_selected_key === item.key ? 'primary' : undefined",),
+                        classes="text-none justify-start",
+                        style="font-size:12px; min-height:32px;",
+                    ):
+                        with html.Div(style="display:flex;align-items:center;gap:8px;width:100%;"):
+                            html.Div(style=("`width:10px;height:10px;border-radius:50%;flex:none;background:${item.color}`",))
+                            html.Span("{{ item.label }}")
+            with html.Div(v_if="materials_selected_key", classes="mt-4"):
+                vuetify.VDivider(classes="mb-3")
+                html.Div("{{ materials_detail_label }}", style="font-size:15px;font-weight:600;")
+                html.Div(
+                    "{{ materials_detail_density }} · OpenMC id {{ materials_detail_id }}",
+                    classes="text-caption mt-1",
+                    style="color:#64748b;",
+                )
+                html.Div("COMPOSITION", classes="text-overline mt-3")
+                with html.Div(
+                    v_if="materials_composition.length",
+                    style="display:grid;grid-template-columns:1fr auto auto;gap:4px 10px;"
+                          "font-size:12px;align-items:baseline;"
+                ):
+                    html.Div("Nuclide", style="font-weight:600;color:#64748b;")
+                    html.Div("Fraction", style="font-weight:600;color:#64748b;text-align:right;")
+                    html.Div("Type", style="font-weight:600;color:#64748b;")
+                    with html.Div(v_for="row in materials_composition", key="row.symbol",
+                                  style="display:contents"):
+                        html.Div("{{ row.symbol }}")
+                        html.Div(
+                            "{{ row.percent.toFixed(4) }}%",
+                            style="text-align:right;font-variant-numeric:tabular-nums;",
+                        )
+                        html.Div("{{ row.fraction_type }}", style="color:#64748b;")
+                html.Div(
+                    "No nuclide lines on this material object.",
+                    v_if="!materials_composition.length && !materials_status",
+                    classes="text-caption mt-2",
+                    style="color:#94a3b8;",
+                )
+            with html.Div(v_if="!materials_selected_key", classes="mt-4",
+                          style="padding:16px;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:12px;"
+                                "color:#64748b;font-size:13px;line-height:1.5;"):
+                html.Div("Click a legend material", style="font-weight:600;color:#334155;margin-bottom:4px;")
+                html.Div("Its OpenMC composition will show up here.")
 
     def _panel_header(self) -> None:
         html.Div("{{ model_name }}", classes="text-subtitle-2 mb-1")
@@ -109,26 +216,48 @@ class ViewerUI:
             html.Div('Under construction', style='font-size:12px;font-weight:600;')
             html.Div('Tandem and VNS previews are incomplete and still being developed.',
                      style='font-size:11px;margin-top:4px;')
-        upload_event = ("const input = $event.target; const f = input.files[0]; if (f && !upload_busy) { "
-                        "upload_busy = true; upload_phase = 'loading'; upload_notice = false; "
-                        "load_status = 'Loading ' + f.name + '…'; "
-                        "if (f.size > 2000000) { upload_busy = false; upload_phase = 'error'; "
-                        "load_status = f.name + ' is larger than 2 MB.'; upload_notice = true; input.value = ''; } else { "
-                        "const Controller = utils.get('AbortController'); const aborter = new Controller(); "
-                        "const timer = utils.get('setTimeout')(() => aborter.abort(), 30000); "
-                        "utils.get('fetch')('/paratan-upload?name=' + utils.get('encodeURIComponent')(f.name), "
-                        "{method: 'POST', body: f, signal: aborter.signal})"
-                        ".then(response => response.json())"
-                        ".then(result => { upload_phase = result.phase; load_status = result.message; upload_notice = true; })"
-                        ".catch(error => { upload_phase = 'error'; upload_notice = true; "
-                        "load_status = 'Could not upload ' + f.name + ': ' + error.message + '. Please try again.'; })"
-                        ".finally(() => { utils.get('clearTimeout')(timer); input.value = ''; upload_busy = false; }); } }")
-        with html.Div(style='padding:10px;border:1px solid #cbd5e1;border-radius:6px;'):
-            html.Label('Load input file (.yaml)', for_='device-input-file',
-                       style='display:block;font-size:11px;color:#64748b;margin-bottom:6px;')
-            html.Input(id='device-input-file', type='file', accept='.yaml,.yml',
-                       change=upload_event, disabled=('upload_busy',),
-                       style='width:100%;font-size:11px;color:#334155;')
+        upload_event = (
+            "const input = $event.target; const f = input.files[0]; if (f && !upload_busy) { "
+            "upload_busy = true; upload_phase = 'loading'; upload_notice = false; "
+            "load_status = 'Loading ' + f.name + '…'; "
+            "if (f.size > 2000000) { upload_busy = false; upload_phase = 'error'; "
+            "load_status = f.name + ' is larger than 2 MB.'; upload_notice = true; input.value = ''; } else { "
+            "const Controller = utils.get('AbortController'); const aborter = new Controller(); "
+            "const timer = utils.get('setTimeout')(() => aborter.abort(), 30000); "
+            "utils.get('fetch')('/paratan-upload?name=' + utils.get('encodeURIComponent')(f.name), "
+            "{method: 'POST', body: f, signal: aborter.signal})"
+            ".then(response => response.json())"
+            ".then(result => { upload_phase = result.phase; load_status = result.message; upload_notice = true; })"
+            ".catch(error => { upload_phase = 'error'; upload_notice = true; "
+            "load_status = 'Could not upload ' + f.name + ': ' + error.message + '. Please try again.'; })"
+            ".finally(() => { utils.get('clearTimeout')(timer); input.value = ''; upload_busy = false; }); } }"
+        )
+        # Drag/drop is bound from vanilla JS (static/dropzone.js) so Vue templates stay valid.
+        # The script toggles .paratan-dropzone--active and upload_drag_over for the label.
+        with html.Div(id='paratan-upload-dropzone', classes='paratan-dropzone'):
+            html.Label(
+                'Load input file (.yaml)',
+                for_='device-input-file',
+                v_show='!upload_drag_over',
+                style='display:block;font-size:11px;color:#64748b;margin-bottom:6px;',
+            )
+            html.Div(
+                'Drop YAML to load',
+                v_show='upload_drag_over',
+                style=f'font-size:11px;color:{_UW_RED};font-weight:600;margin-bottom:6px;',
+            )
+            html.Input(
+                id='device-input-file',
+                type='file',
+                accept='.yaml,.yml',
+                change=upload_event,
+                disabled=('upload_busy',),
+                style='width:100%;font-size:11px;color:#334155;',
+            )
+            html.Div(
+                'or drag and drop a .yaml here',
+                style='font-size:10px;color:#94a3b8;margin-top:6px;',
+            )
         vuetify.VProgressLinear(v_if='upload_busy', indeterminate=True, color='primary', classes='mt-2')
         vuetify.VAlert('{{ load_status }}', v_if='load_status', density='compact', variant='tonal',
                        type=("upload_phase === 'error' ? 'error' : (upload_phase === 'success' ? 'success' : 'info')",),
@@ -168,17 +297,6 @@ class ViewerUI:
                                       ("Clear", ctrl.clear_selection)):
                     vuetify.VBtn(label, click=action, size="small", variant="tonal", disabled=("!has_selection",))
                 vuetify.VBtn("Show all", click=ctrl.show_all_components, size="small", variant="text")
-            with html.Details(classes="mt-4"):
-                html.Summary("Appearance", style="cursor:pointer;font-weight:600;")
-                vuetify.VSlider(v_model=("explode", 0), min=0, max=1, step=0.05, label="Explode", classes="mt-4",
-                                hide_details=True)
-                vuetify.VSlider(v_model=("selected_opacity", 1), min=0, max=1, step=0.05,
-                                label="Selection opacity", disabled=("!has_selection",), hide_details=True)
-                html.Div("MATERIALS", classes="text-overline mt-3")
-                with html.Div(v_for="item in legend_items", key="item.name", classes="d-flex align-center mb-2",
-                              style="gap:8px;"):
-                    html.Div(style=("`width:10px;height:10px;border-radius:50%;flex:none;background:${item.color}`",))
-                    html.Div("{{ item.name }}", classes="text-caption")
 
     def _inspect_panel(self) -> None:
         def caption(text: str) -> None:

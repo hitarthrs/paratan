@@ -23,6 +23,7 @@ Useful flags:
 | `--host` / `--port` | `127.0.0.1` / `8080` | Bind address |
 | `--n-theta` | `96` | Angular tessellation (lower = faster) |
 | `--render` | `trame` | `trame` (snappy), `server` (if blank canvas), `client` |
+| `--timeout` | `2` | Exit this many seconds after the last browser tab closes (`0` = keep alive) |
 | `--no-browser` | off | Do not auto-open a tab |
 
 If the canvas is blank: try `--render server`, then hard-refresh (`Ctrl+Shift+R`).

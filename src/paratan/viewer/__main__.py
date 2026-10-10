@@ -53,16 +53,31 @@ def main(argv: list[str] | None = None) -> int:
             "server=JPEG from Python; client=WebGL only"
         ),
     )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=2,
+        help=(
+            "Seconds to keep the server after the last browser tab disconnects "
+            "(default: 2). Use 0 to leave the process running until Ctrl-C."
+        ),
+    )
     args = parser.parse_args(argv)
 
     if not args.input.is_file():
         parser.error(f"Input YAML not found: {args.input}")
+    if args.timeout < 0:
+        parser.error("--timeout must be >= 0")
 
     from src.paratan.viewer.app import run_app
 
     print(f"[paratan-viewer] input  : {args.input.resolve()}")
     print(f"[paratan-viewer] open   : http://{args.host}:{args.port}/")
     print(f"[paratan-viewer] render : {args.render}")
+    if args.timeout:
+        print(f"[paratan-viewer] timeout: {args.timeout}s after last browser disconnect")
+    else:
+        print("[paratan-viewer] timeout: disabled (Ctrl-C to stop)")
     print("[paratan-viewer] tip    : orbit should feel local; if blank use --render server")
     print("[paratan-viewer] if blank: hard-refresh the tab (Ctrl+Shift+R)")
     run_app(
@@ -72,6 +87,7 @@ def main(argv: list[str] | None = None) -> int:
         n_theta=args.n_theta,
         open_browser=not args.no_browser,
         render_mode=args.render,
+        timeout=args.timeout,
     )
     return 0
 
