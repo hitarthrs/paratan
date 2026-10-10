@@ -24,6 +24,11 @@ analyze_statepoint.py
 *.eps
 *.ps
 
+# Keep viewer brand assets / preview
+!src/paratan/viewer/static/
+!src/paratan/viewer/static/**
+!src/paratan/viewer/simple_mirror_preview.png
+
 # Example directories
 hitarthNWLexample/
 
