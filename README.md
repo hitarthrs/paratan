@@ -6,9 +6,9 @@
 
 ## Example Schematics
 
-Example Tandem VNS cutaway:
+Example Simple mirror cross-section:
 
-<img src="examples/processed/tandem_vns_cutaway.png" alt="Tandem VNS model cutaway" width="600" />
+<img src="examples/processed/simple_mirror_cutaway.png" alt="Simple mirror model schematic" width="600" />
 
 Example Tandem mirror cross-section:
 
