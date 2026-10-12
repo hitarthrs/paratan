@@ -1,0 +1,60 @@
+# ________________________________________ TESTING MODULE GEOMETRY (cm) ________________________________________ #
+# Third input file for tandem VNS: per-ID module solids only.
+# Referenced from testing_module_input.yaml → central_cell.test_modules.geometry_file
+# Layout / placement stays in the machine YAML; geometry lives here.
+
+defaults:
+  SCLL:
+    n_fw_channels: 20
+    channel_radial_thickness: 2.0
+    front_thickness: 0.4
+    back_thickness: 0.4
+    axial_gap: 0.4
+    axial_end_thickness: 1.0
+    armor_thickness: 0.2
+    divider_thickness: 0.6
+    bulk_rows:
+      - n_channels: 4
+        radial_thickness: 80.0
+    bulk_front_thickness: 0.5
+    bulk_back_thickness: 1.0
+    bulk_radial_gap: 1.0
+
+  DCLL_FNSF:
+    # Sized so default DCLL outer ≈ default SCLL outer (~150 cm) for shared LF radius.
+    front_pbli_thickness: 37.15
+    rear_pbli_thickness: 37.15
+    n_axial_bins: 4
+    fw_he_thickness: 2.0
+    midplate_he_thickness: 0.8
+    back_he_thickness: 0.8
+    n_fw_he_channels: 12
+    n_midplate_he_channels: 8
+    n_back_he_channels: 8
+
+modules:
+  # −z station: SCLL left / DCLL right
+  M_SCLL_LO:
+    type: SCLL
+    n_fw_channels: 12
+    armor_thickness: 0.4
+    bulk_rows:
+      - n_channels: 2
+        radial_thickness: 40.0
+      - n_channels: 2
+        radial_thickness: 40.0
+
+  M_DCLL_LO:
+    type: DCLL_FNSF
+    n_fw_he_channels: 8
+
+  # +z station: DCLL left / SCLL right
+  M_DCLL_HI:
+    type: DCLL_FNSF
+    front_pbli_thickness: 30.0
+    rear_pbli_thickness: 44.3
+
+  M_SCLL_HI:
+    type: SCLL
+    n_fw_channels: 24
+    armor_thickness: 0.15
