@@ -10,9 +10,9 @@ Example Simple mirror cross-section:
 
 <img src="examples/processed/simple_mirror_cutaway.png" alt="Simple mirror model schematic" width="600" />
 
-Example Tandem mirror cross-section:
+Example Tandem mirror cutaway:
 
-<img src="examples/processed/tandem_mirror_cross_section_rotated.png" alt="Tandem mirror model schematic" width="600" />
+<img src="examples/processed/tandem_mirror_cutaway.png" alt="Tandem mirror model cutaway" width="600" />
 
 # 🐳 Setting Up the Environment with Docker
 
