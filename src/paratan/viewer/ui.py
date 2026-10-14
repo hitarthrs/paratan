@@ -33,10 +33,12 @@ class ViewerUI:
                 "border-bottom:none!important;box-shadow:none!important;}\n"
                 ".paratan-appbar .v-toolbar-title{color:" + _UW_WHITE + "!important;}\n"
                 ".paratan-brand{font-family:'Source Serif 4','Source Serif Pro',Georgia,serif;"
-                "color:" + _UW_WHITE + ";letter-spacing:.02em;line-height:1;}\n"
-                ".paratan-brand .para{font-weight:400;}\n"
-                ".paratan-brand .tan{font-weight:700;}\n"
-                ".paratan-brand .rest{font-weight:400;opacity:.92;}\n"
+                "color:" + _UW_WHITE + ";letter-spacing:0;line-height:1;"
+                "display:inline-flex;align-items:baseline;}\n"
+                ".paratan-brand .para{font-weight:400;letter-spacing:0;}\n"
+                ".paratan-brand .tan{font-weight:700;letter-spacing:0;}\n"
+                ".paratan-brand .rest{font-weight:400;opacity:.92;letter-spacing:.02em;"
+                "margin-left:.25em;}\n"
                 ".paratan-appbar .v-btn{color:" + _UW_WHITE + "!important;}\n"
                 ".paratan-appbar .v-chip{background:rgba(255,255,255,.18)!important;color:"
                 + _UW_WHITE + "!important;border-color:rgba(255,255,255,.35)!important;}\n"
@@ -51,9 +53,10 @@ class ViewerUI:
                     html.Img(src=logo_uri, alt="ParaTAN logo", width=32, height=32,
                              style="display:block;flex-shrink:0;")
                     with html.Span(classes="paratan-brand", style="font-size:18px;"):
+                        # inline-flex parent: no inter-span whitespace between Para and TAN
                         html.Span("Para", classes="para")
                         html.Span("TAN", classes="tan")
-                        html.Span(" Geometry studio", classes="rest")
+                        html.Span("Geometry studio", classes="rest")
             layout.root.style = "height:100vh; overflow:hidden; background:#f1f5f9; color:#172b4d;"
             with vuetify.VSnackbar(v_model=('upload_notice', False), timeout=8000,
                                   color=("upload_phase === 'error' ? 'error' : 'success'",), location='bottom right'):

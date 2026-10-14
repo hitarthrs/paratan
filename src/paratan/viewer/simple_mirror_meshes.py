@@ -13,10 +13,23 @@ from src.paratan.viewer.mesh_primitives import annular_cylinder
 from src.paratan.viewer.labels import component_label
 from src.paratan.viewer.revolve import Profile
 
+# Keep in sync with src.paratan.geometry.core.SIMPLE_MIRROR_VV_STYLES (avoid OpenMC import).
+_SIMPLE_MIRROR_VV_STYLES = frozenset({"conical", "perpendicular"})
+
 
 def load_simple_mirror_yaml(path: str | Path) -> dict[str, Any]:
     with Path(path).open() as f:
         return yaml.safe_load(f)
+
+
+def _vv_style(vv: dict[str, Any]) -> str:
+    style = str(vv.get("geometry_style", "conical") or "conical").lower()
+    if style not in _SIMPLE_MIRROR_VV_STYLES:
+        raise ValueError(
+            "vacuum_vessel.geometry_style must be one of "
+            f"{sorted(_SIMPLE_MIRROR_VV_STYLES)}, got {vv.get('geometry_style')!r}"
+        )
+    return style
 
 
 def _vv_z_extents(vv: dict[str, Any]) -> dict[str, float]:
@@ -36,6 +49,30 @@ def _vv_z_extents(vv: dict[str, Any]) -> dict[str, float]:
     }
 
 
+def _perpendicular_z_extents(vv: dict[str, Any], thickness: float = 0.0) -> dict[str, float]:
+    """Stepped VV extents; structural thickness grows the central cylinder axially.
+
+    Matches :func:`src.paratan.models.simple_mirror_volumes._profile` and the
+    ports builder's perpendicular structural nesting (outermost ends fixed).
+    """
+    mid = float(vv.get("axial_midplane", 0.0))
+    half = float(vv["central_axial_length"]) / 2.0
+    left_bn = float(vv["left_bottleneck_length"])
+    right_bn = float(vv["right_bottleneck_length"])
+    h = half + float(thickness)
+    left_end = mid - half - left_bn
+    right_end = mid + half + right_bn
+    if mid - h <= left_end or mid + h >= right_end:
+        raise ValueError("Structural thickness exhausts a vessel bottleneck.")
+    return {
+        "mid": mid,
+        "central_left": mid - h,
+        "central_right": mid + h,
+        "left_end": left_end,
+        "right_end": right_end,
+    }
+
+
 def _vessel_outline(r_central: float, r_bottle: float, z: dict[str, float]) -> list[tuple[float, float]]:
     """Left-to-right (r, z) outline of the conical vessel wall, bottle ends included."""
     return [
@@ -48,9 +85,31 @@ def _vessel_outline(r_central: float, r_bottle: float, z: dict[str, float]) -> l
     ]
 
 
+def _perpendicular_vessel_outline(
+    r_central: float, r_bottle: float, z: dict[str, float]
+) -> list[tuple[float, float]]:
+    """Left-to-right (r, z) outline of the stepped (perpendicular) vessel wall."""
+    return [
+        (r_bottle, z["left_end"]),
+        (r_bottle, z["central_left"]),
+        (r_central, z["central_left"]),
+        (r_central, z["central_right"]),
+        (r_bottle, z["central_right"]),
+        (r_bottle, z["right_end"]),
+    ]
+
+
 def _conical_vessel_solid(r_central: float, r_bottle: float, z: dict[str, float]) -> Profile:
     """Filled conical VV (plasma / vessel interior) matching single_vacuum_vessel_region."""
     wall = _vessel_outline(r_central, r_bottle, z)
+    return Profile.polygon([(0.0, wall[0][1]), *wall, (0.0, wall[-1][1])])
+
+
+def _perpendicular_vessel_solid(
+    r_central: float, r_bottle: float, z: dict[str, float]
+) -> Profile:
+    """Filled stepped VV matching perpendicular_vacuum_vessel_region."""
+    wall = _perpendicular_vessel_outline(r_central, r_bottle, z)
     return Profile.polygon([(0.0, wall[0][1]), *wall, (0.0, wall[-1][1])])
 
 
@@ -63,9 +122,30 @@ def _conical_vessel_shell(
     return Profile.polygon([*outer, *inner[::-1]])
 
 
+def _perpendicular_vessel_shell(
+    r_c_in: float,
+    r_b_in: float,
+    z_in: dict[str, float],
+    r_c_out: float,
+    r_b_out: float,
+    z_out: dict[str, float],
+) -> Profile:
+    """Structural shell between two stepped VV surfaces (possibly different step z)."""
+    outer = _perpendicular_vessel_outline(r_c_out, r_b_out, z_out)
+    inner = _perpendicular_vessel_outline(r_c_in, r_b_in, z_in)
+    return Profile.polygon([*outer, *inner[::-1]])
+
+
 def _surround_vessel_profile(r_out: float, z0: float, z1: float, wall) -> Profile:
-    """Cylindrical blanket outside the vessel, including its tapered ends."""
+    """Cylindrical blanket outside the vessel, including its tapered ends.
+
+    ``wall`` must be a left-to-right outline with strictly increasing ``z``
+    (conical). Stepped / perpendicular vessels use
+    :func:`_surround_stepped_vessel_profile` instead.
+    """
     radii, heights = np.asarray(wall).T
+    if np.any(np.diff(heights) <= 0):
+        raise ValueError("conical surround wall must have strictly increasing z")
     inner = []
     if z0 < heights[0]:
         inner.extend([(0.0, z0), (0.0, min(z1, heights[0]))])
@@ -75,6 +155,63 @@ def _surround_vessel_profile(r_out: float, z0: float, z1: float, wall) -> Profil
         inner.extend((float(np.interp(z, heights, radii)), z) for z in zs)
     if z1 > heights[-1]:
         inner.extend([(0.0, max(z0, heights[-1])), (0.0, z1)])
+    return Profile.polygon([(r_out, z0), (r_out, z1), *inner[::-1]])
+
+
+def _surround_stepped_vessel_profile(
+    r_out: float,
+    z0: float,
+    z1: float,
+    wall: list[tuple[float, float]],
+) -> Profile:
+    """Cylindrical blanket outside a stepped (perpendicular) vessel wall.
+
+    Walks the outline so vertical step faces become radial bore edges; regions
+    beyond the vessel ends are solid out to the axis (same convention as the
+    conical surround helper).
+    """
+    if z1 <= z0:
+        raise ValueError("surround needs z1 > z0")
+    w0, w1 = float(wall[0][1]), float(wall[-1][1])
+
+    def clip_seg(
+        r_a: float, z_a: float, r_b: float, z_b: float
+    ) -> list[tuple[float, float]]:
+        """Clip one outline segment to ``[z0, z1]`` (inclusive)."""
+        if abs(z_b - z_a) <= 1e-12:
+            # Vertical (radial) step: keep if the step plane is in-range.
+            if z0 - 1e-12 <= z_a <= z1 + 1e-12:
+                return [(r_a, z_a), (r_b, z_b)]
+            return []
+        # Parametric clip in z.
+        za, zb, ra, rb = z_a, z_b, r_a, r_b
+        if za > zb:
+            za, zb, ra, rb = zb, za, rb, ra
+            flipped = True
+        else:
+            flipped = False
+        if zb < z0 - 1e-12 or za > z1 + 1e-12:
+            return []
+        t0 = 0.0 if za >= z0 else (z0 - za) / (zb - za)
+        t1 = 1.0 if zb <= z1 else (z1 - za) / (zb - za)
+        p0 = (ra + t0 * (rb - ra), za + t0 * (zb - za))
+        p1 = (ra + t1 * (rb - ra), za + t1 * (zb - za))
+        return [p1, p0] if flipped else [p0, p1]
+
+    inner: list[tuple[float, float]] = []
+    if z0 < w0 - 1e-12:
+        inner.extend([(0.0, z0), (0.0, min(z1, w0))])
+    for (r_a, z_a), (r_b, z_b) in zip(wall[:-1], wall[1:]):
+        for pt in clip_seg(float(r_a), float(z_a), float(r_b), float(z_b)):
+            if not inner or abs(inner[-1][0] - pt[0]) > 1e-9 or abs(inner[-1][1] - pt[1]) > 1e-9:
+                inner.append(pt)
+    if z1 > w1 + 1e-12:
+        start = (0.0, max(z0, w1))
+        if not inner or abs(inner[-1][0] - start[0]) > 1e-9 or abs(inner[-1][1] - start[1]) > 1e-9:
+            inner.append(start)
+        inner.append((0.0, z1))
+    if len(inner) < 2:
+        return Profile.rect(0.0, r_out, z0, z1)
     return Profile.polygon([(r_out, z0), (r_out, z1), *inner[::-1]])
 
 
@@ -115,21 +252,16 @@ def build_simple_mirror_components(
     """YAML dict → list of ComponentMesh (no OpenMC build required)."""
     components: list[ComponentMesh] = []
     vv = input_data["vacuum_vessel"]
-    z = _vv_z_extents(vv)
-    style = vv.get("geometry_style", "conical")
+    style = _vv_style(vv)
     r_c0 = float(vv["central_radius"])
     r_b0 = float(vv["bottleneck_radius"])
+    conical = style == "conical"
+    z = _vv_z_extents(vv) if conical else _perpendicular_z_extents(vv)
 
-    if style != "conical":
-        # Straight / perpendicular: approximate as stepped cylinders (central + bottles).
-        mid = z["mid"]
-        second = float(vv["central_axial_length"]) / 2.0
-        profile = Profile.polygon([
-            (0.0, z["left_end"]), (r_b0, z["left_end"]), (r_b0, mid - second), (r_c0, mid - second),
-            (r_c0, mid + second), (r_b0, mid + second), (r_b0, z["right_end"]), (0.0, z["right_end"]),
-        ])
-    else:
+    if conical:
         profile = _conical_vessel_solid(r_c0, r_b0, z)
+    else:
+        profile = _perpendicular_vessel_solid(r_c0, r_b0, z)
 
     _add(
         components,
@@ -152,16 +284,28 @@ def build_simple_mirror_components(
     structural_materials = [str(p["material"]) for p in structure.values()]
     central_radii = np.cumsum([r_c0] + structural_thicknesses)
     bottle_radii = np.cumsum([r_b0] + structural_thicknesses)
+    # Cumulative structural thickness for perpendicular axial growth of the step.
+    cum_thickness = np.cumsum([0.0] + structural_thicknesses)
 
     for i, layer_name in enumerate(structural_names):
         group = "FW" if "first_wall" in layer_name.lower() or layer_name == "first_wall" else "VV"
-        shell = _conical_vessel_shell(
-            float(central_radii[i]),
-            float(bottle_radii[i]),
-            float(central_radii[i + 1]),
-            float(bottle_radii[i + 1]),
-            z,
-        )
+        if conical:
+            shell = _conical_vessel_shell(
+                float(central_radii[i]),
+                float(bottle_radii[i]),
+                float(central_radii[i + 1]),
+                float(bottle_radii[i + 1]),
+                z,
+            )
+        else:
+            shell = _perpendicular_vessel_shell(
+                float(central_radii[i]),
+                float(bottle_radii[i]),
+                _perpendicular_z_extents(vv, float(cum_thickness[i])),
+                float(central_radii[i + 1]),
+                float(bottle_radii[i + 1]),
+                _perpendicular_z_extents(vv, float(cum_thickness[i + 1])),
+            )
         _add(
             components,
             name=f"vv_{layer_name}",
@@ -174,6 +318,16 @@ def build_simple_mirror_components(
 
     vv_outer_r = float(central_radii[-1]) if len(central_radii) else r_c0
     vv_outer_bottle = float(bottle_radii[-1]) if len(bottle_radii) else r_b0
+    outer_wall = (
+        _vessel_outline(vv_outer_r, vv_outer_bottle, z)
+        if conical
+        else _perpendicular_vessel_outline(
+            vv_outer_r,
+            vv_outer_bottle,
+            _perpendicular_z_extents(vv, float(cum_thickness[-1])),
+        )
+    )
+    surround = _surround_vessel_profile if conical else _surround_stepped_vessel_profile
 
     # --- Central cell radial layers (outside VV) ---
     cc = input_data["central_cell"]
@@ -183,9 +337,11 @@ def build_simple_mirror_components(
         thick = float(layer["thickness"])
         r_out = r_in + thick
         mat = str(layer["material"])
-        profile = (_surround_vessel_profile(r_out, -cc_half, cc_half,
-                    _vessel_outline(vv_outer_r, vv_outer_bottle, z)) if i == 0 else
-                   Profile.rect(r_in, r_out, -cc_half, cc_half))
+        profile = (
+            surround(r_out, -cc_half, cc_half, outer_wall)
+            if i == 0
+            else Profile.rect(r_in, r_out, -cc_half, cc_half)
+        )
         _add(
             components,
             name=f"cc_layer_{i}_{mat}",
