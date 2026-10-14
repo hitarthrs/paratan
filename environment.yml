@@ -24,6 +24,10 @@ dependencies:
   - netcdf4
   - vtk
   - progress
+  - pyvista
+  - trame
+  - trame-vtk
+  - trame-vuetify
 
   # ---- PyNE (instead of the bash installer script) ----
   #- pyne

@@ -2,12 +2,13 @@
 from __future__ import annotations
 import hashlib
 from collections import OrderedDict
-from dataclasses import dataclass
+from dataclasses import dataclass, field, fields
+from copy import deepcopy
+from math import isfinite
 import numpy as np
 import pyvista as pv
 import yaml
-from src.paratan.viewer.components import ComponentMesh
-from src.paratan.viewer.labels import GROUP_LABELS
+from src.paratan.viewer.components import ComponentMesh, GROUP_LABELS
 from src.paratan.viewer.revolve import FULL, Section, section_closed_mesh
 from src.paratan.viewer.devices import adapter_for
 from src.paratan.viewer.manifest import display_manifest, ModelManifest
@@ -27,6 +28,7 @@ EDGE_COLOR = "#1f2937"
 GROUP_OFFSETS = {
     "VV": (0.0, 0.0, 0.0), "FW": (0.0, 0.0, 0.0), "CC": (1.0, 0.0, 0.0), "LF": (0.0, 1.0, 0.0),
     "HF": (0.0, 0.0, 1.0), "ends": (0.0, 0.0, 1.5), "ports": (1.2, 0.0, 0.0),
+    "IO": (1.0, 0.0, 0.5),
 }
 SCALAR_BAR = {"title": "Heating, demo [a.u.]", "color": "#334155", "fmt": "%.0f", "vertical": True,
               "position_x": 0.92, "position_y": 0.22, "height": 0.5, "width": 0.04, "n_labels": 5}
@@ -78,11 +80,21 @@ def build_model(text: str, name: str, n_theta: int) -> Model:
         raise ValueError("the file is not a simple-mirror input (expected a YAML mapping)")
     adapter = adapter_for(data)
     components = adapter.build_components(data, n_theta)
-    port_openings = None
-    if adapter.kind == "simple_mirror" and (data.get("ports") or {}).get("ports_present"):
-        from src.paratan.viewer.port_openings import PortOpenings
-        port_openings = PortOpenings(data)
-    port_key = hashlib.sha256(yaml.safe_dump({"ports":data.get("ports"), "vacuum_vessel":data.get("vacuum_vessel")}).encode()).hexdigest() if port_openings else ""
+    from src.paratan.viewer.port_openings import openings_for
+    port_openings = openings_for(data)
+    port_key = (
+        hashlib.sha256(
+            yaml.safe_dump(
+                {
+                    "ports": data.get("ports"),
+                    "vacuum_vessel": data.get("vacuum_vessel"),
+                    "blanket_inlet_outlet": data.get("blanket_inlet_outlet"),
+                }
+            ).encode()
+        ).hexdigest()
+        if port_openings
+        else ""
+    )
     meshes: dict[str, dict[str, pv.PolyData]] = {m: {} for m in MODES}
     outlines: dict[str, dict[str, pv.PolyData]] = {m: {} for m in MODES}
     for mode in MODES:
@@ -134,7 +146,8 @@ def build_model(text: str, name: str, n_theta: int) -> Model:
         centers[comp.name] = (0.5 * (x0 + x1), 0.5 * (y0 + y1), 0.5 * (z0 + z1))
     return Model(name, data, hashlib.sha256(text.encode()).hexdigest(), components,
                  {c.name: c for c in components}, centers, meshes, outlines,
-                 display_manifest(data, components), "Tandem mirror" if adapter.kind == "tandem" else "Simple mirror")
+                 display_manifest(data, components),
+                 {"tandem": "Tandem mirror", "ffh": "FFH"}.get(adapter.kind, "Simple mirror"))
 
 
 HIDDEN_SCALE = 1e-6
@@ -154,3 +167,173 @@ def _set_shown(actor, shown: bool) -> None:
 
 def is_shown(actor) -> bool:
     return bool(actor.GetVisibility()) and actor.GetScale()[0] > HIDDEN_SCALE
+
+
+# --- scene state (merged from state.py) ---
+
+
+@dataclass
+class SceneState:
+    selected_name: str = ''
+    has_selection: bool = False
+    selected_opacity: float = 1.0
+    solo: bool = False
+    section_mode: str = 'none'
+    explode: float = 0.0
+    slice_phi_on: bool = False
+    slice_phi: float = 0.0
+    slice_z_on: bool = False
+    slice_z: float = 0.0
+    has_slice: bool = False
+    slice_z_min: float = 0.0
+    slice_z_max: float = 1.0
+    slice_info: str = ''
+    preview_tally: bool = False
+    demo_heating: bool = False
+    demo_opacity: float = 1.0
+    heating_available: bool = False
+    tally_summary: dict = field(default_factory=dict)
+    tally_mesh_index: int = 0
+    result_id: str = ''
+    result_quantity: str = 'mean'
+    groups: dict[str, bool] = field(default_factory=dict)
+    hidden: set[str] = field(default_factory=set)
+    opacity: dict[str, float] = field(default_factory=dict)
+    camera: dict = field(default_factory=dict)
+    action_status: str = ''
+
+    def __getattr__(self, key):
+        if key.startswith('vis_'):
+            return self.groups.get(key[4:], True)
+        raise AttributeError(key)
+
+    def __setattr__(self, key, value):
+        if key.startswith('vis_') and 'groups' in self.__dict__:
+            self.groups[key[4:]] = bool(value)
+        else:
+            super().__setattr__(key, value)
+
+    def snapshot(self):
+        return deepcopy(self.__dict__)
+
+
+SCENE_FIELDS = {f.name for f in fields(SceneState)} - {'groups', 'hidden', 'opacity', 'camera'}
+
+
+class SceneActions:
+    """The same actions can be used from Trame, scripts, tests, or another UI."""
+    def __init__(self, state: SceneState):
+        self.state = state
+        self.components = set()
+
+    def install(self, components, groups):
+        self.components = set(components)
+        self.state.groups = {g: True for g in groups}
+        self.reset()
+
+    def set(self, key, value):
+        if key.startswith('vis_'):
+            setattr(self.state, key, bool(value))
+            return
+        if key not in SCENE_FIELDS:
+            raise ValueError(f'Unknown scene setting: {key}')
+        if key in ('explode', 'selected_opacity', 'demo_opacity'):
+            value = float(value)
+            if not isfinite(value) or not 0 <= value <= 1:
+                raise ValueError(f'{key} must be between 0 and 1')
+        elif key in ('slice_phi', 'slice_z', 'slice_z_min', 'slice_z_max'):
+            value = float(value)
+            if not isfinite(value):
+                raise ValueError(f'{key} must be finite')
+        elif key == 'section_mode' and value not in ('none', 'half', 'quarter'):
+            raise ValueError('Unknown section mode')
+        elif key == 'result_quantity' and value not in ('mean', 'std_dev', 'relative_error'):
+            raise ValueError('Unknown result quantity')
+        elif key == 'tally_mesh_index':
+            value = int(value)
+            if value < 0:
+                raise ValueError('Tally index must be nonnegative')
+        setattr(self.state, key, value)
+
+    def select(self, name):
+        if name not in self.components:
+            raise ValueError(f'Unknown component: {name}')
+        self.state.selected_name = name
+        self.state.has_selection = True
+        self.state.result_id = ''
+
+    def clear(self):
+        s = self.state
+        s.selected_name, s.has_selection, s.solo = '', False, False
+        s.slice_phi_on = s.slice_z_on = s.has_slice = False
+        s.result_id = ''
+
+    def hide_selected(self):
+        if self.state.selected_name:
+            self.state.hidden.add(self.state.selected_name)
+
+    def show_all(self):
+        self.state.hidden.clear()
+        self.state.groups = dict.fromkeys(self.state.groups, True)
+        self.state.solo = False
+
+    def reset(self):
+        groups = dict.fromkeys(self.state.groups, True)
+        fresh = SceneState(groups=groups)
+        self.state.__dict__.clear()
+        self.state.__dict__.update(fresh.__dict__)
+
+
+class TrameStateBridge:
+    """Trame is a projection of SceneState plus presentation-only fields.
+
+    UI changes are validated at the boundary. Python actions publish back to
+    Trame. Rendering never depends on Trame's event or state implementation.
+    """
+    def __init__(self, ui, scene, actions):
+        object.__setattr__(self, 'ui', ui)
+        object.__setattr__(self, 'scene', scene)
+        object.__setattr__(self, 'actions', actions)
+
+    def __getattr__(self, key):
+        if key in SCENE_FIELDS or key.startswith('vis_'):
+            return getattr(self.scene, key)
+        return getattr(self.ui, key)
+
+    def __setattr__(self, key, value):
+        if key in SCENE_FIELDS or key.startswith('vis_'):
+            self.actions.set(key, value)
+        setattr(self.ui, key, value)
+
+    def update(self, mapping):
+        for key, value in mapping.items():
+            setattr(self, key, value)
+
+    def publish_scene(self):
+        self.ui.update({key: getattr(self.scene, key) for key in SCENE_FIELDS})
+        self.ui.update({f'vis_{g}': value for g, value in self.scene.groups.items()})
+
+    def change(self, *names):
+        def decorate(callback):
+            def changed(**kwargs):
+                before = self.scene.snapshot()
+                try:
+                    # One browser event can change multiple independently watched
+                    # fields. Import the complete projection before any callback
+                    # publishes it, otherwise an early callback can overwrite the
+                    # other incoming changes with stale canonical values.
+                    keys = SCENE_FIELDS | {f'vis_{g}' for g in self.scene.groups}
+                    incoming = {key: getattr(self.ui, key) for key in keys}
+                    for key, value in incoming.items():
+                        self.actions.set(key, value)
+                except (ValueError, TypeError) as exc:
+                    self.scene.__dict__.clear()
+                    self.scene.__dict__.update(before)
+                    self.scene.action_status = str(exc)
+                    self.publish_scene()
+                    return
+                callback(**kwargs)
+                self.publish_scene()
+            self.ui.change(*names)(changed)
+            return changed
+        return decorate

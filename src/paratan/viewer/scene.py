@@ -3,13 +3,13 @@ from __future__ import annotations
 import numpy as np
 import pyvista as pv
 from src.paratan.viewer.model import MODES, MODE_SECTIONS, SLICE_WEDGE, GROUP_OFFSETS, OVERLAYS, BODY_STYLE, EDGE_COLOR, HEAT, SCALAR_BAR, _set_shown
-from src.paratan.viewer.cyl_grid import CylGrid, demo_heating_field
-from src.paratan.viewer.inspection import tally_configuration
 from src.paratan.viewer.revolve import Section
 from src.paratan.viewer.components import ComponentMesh
-from src.paratan.viewer.results import synthetic_dataset
 from src.paratan.viewer.manifest import component_id
-from src.paratan.viewer.tally_overlay import describe_overlay, lift_boundary
+from src.paratan.viewer.results import (
+    CylGrid, demo_heating_field, tally_configuration, synthetic_dataset,
+    describe_overlay, lift_boundary,
+)
 
 class SceneController:
     def __init__(self, state, plotter, n_theta, push):
@@ -37,10 +37,8 @@ class SceneController:
                 pl.remove_actor(actor, reset_camera=False, render=False)
             registry.clear()
         self.model = model
-        self.port_openings = None
-        if model.device_label == 'Simple mirror' and (model.data.get('ports') or {}).get('ports_present'):
-            from src.paratan.viewer.port_openings import PortOpenings
-            self.port_openings = PortOpenings(model.data)
+        from src.paratan.viewer.port_openings import openings_for
+        self.port_openings = openings_for(model.data)
         self._geometry_key = None
         self.datasets.clear()
         self._demo_cache.clear()

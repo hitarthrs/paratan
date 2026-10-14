@@ -8,9 +8,7 @@ import numpy as np
 import pyvista as pv
 import yaml
 
-from src.paratan.viewer.components import ComponentMesh, color_for_material
-from src.paratan.viewer.mesh_primitives import annular_cylinder
-from src.paratan.viewer.labels import component_label
+from src.paratan.viewer.components import ComponentMesh, color_for_material, component_label
 from src.paratan.viewer.revolve import Profile
 
 # Keep in sync with src.paratan.geometry.core.SIMPLE_MIRROR_VV_STYLES (avoid OpenMC import).

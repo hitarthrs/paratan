@@ -4,7 +4,7 @@
 
 vacuum_vessel:
   # New single_vacuum_vessel_region parameters
-  geometry_style: "conical" # Conical composite shape or "perpendicular" straight section
+  geometry_style: "perpendicular" # Conical composite shape or "perpendicular" straight section
   outer_axial_length: 450  # Total axial length of outer cylindrical segment (cm)
   central_axial_length: 600  # Total axial length of central cylindrical section (cm)
   central_radius: 75  # Radius of central cylindrical section (cm)

@@ -7,25 +7,30 @@ the bundled models under **Example devices**.
 
 ## Boundaries
 
-- `state.py`: canonical `SceneState`, validated `SceneActions`, and the Trame
-  projection. State and actions can be exercised without a browser or VTK.
-- `devices.py`: `DeviceAdapter` protocol and simple/tandem adapters. They translate
-  device-specific inputs into common components and tally configurations.
-- `model.py`: caches full/half/quarter geometry. The scene preloads all cutaways
-  so switching cuts only changes actor transforms. Browser array requests share
-  in-flight downloads, and uploads update the live scene without a page reload.
+- `model.py`: cutaway cache (full/half/quarter), plus canonical `SceneState`,
+  validated `SceneActions`, and the Trame projection. State and actions can be
+  exercised without a browser or VTK. The scene preloads all cutaways so
+  switching cuts only changes actor transforms.
+- `devices.py`: `DeviceAdapter` protocol and simple/FFH/tandem adapters. They
+  translate device-specific inputs into common components and tally
+  configurations.
+- `components.py`: `ComponentMesh`, display labels, and the material color
+  palette shared by adapters and the UI legend.
 - `scene.py`: owns VTK actors, dynamic slices, overlays, and result rendering.
   It receives ordinary Python state, not Trame state. Geometry signatures separate
   structural changes from opacity, visibility, and explode updates.
-- `results.py`: immutable cylindrical coordinates and tally arrays. Array order
-  is always `(r, phi, z)`. Synthetic and OpenMC data use `TallyDataset`.
+- `results.py`: cylindrical grids, tally overlays/inspection helpers, and
+  immutable tally arrays. Array order is always `(r, phi, z)`. Synthetic and
+  OpenMC data use `TallyDataset`.
 - `manifest.py`: versioned, JSON-safe component, cell, and tally identities.
   Importing it from a simulation builder does not import VTK or Trame.
-- `presets.py`: validates an entire saved view before it affects the scene.
-- `ui.py`: widgets and presentation only; callbacks dispatch application actions.
+- `ui.py`: widgets, presentation, and client transport helpers; callbacks
+  dispatch application actions.
 - `app.py`: coordinates model loading, the state bridge, result loading, camera,
-  presets, and export. Existing `create_app`, `build_model`, and launch entry
-  points remain available.
+  preset validate/save/load, materials catalog, and export. Existing
+  `create_app`, `build_model`, and launch entry points remain available.
+- Geometry builders stay separate: `simple_mirror_meshes.py`, `port_openings.py`,
+  `revolve.py`, and `gl_env.py` (must run before VTK).
 
 To add another device, implement `DeviceAdapter.build_components`, register it in
 `ADAPTERS`, and extend input detection in `manifest.device_kind`. Components use

@@ -17,6 +17,8 @@ def input_fingerprint(data):
 
 
 def device_kind(data):
+    if str(data.get('device', '')).lower() == 'ffh':
+        return 'ffh'
     vv = data.get('vacuum_vessel') or {}
     return 'tandem' if 'central_cell' in vv and 'end_plug' in vv else 'simple_mirror'
 

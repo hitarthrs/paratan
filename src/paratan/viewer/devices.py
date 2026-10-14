@@ -8,7 +8,7 @@ from src.paratan.viewer.simple_mirror_meshes import (
     _conical_vessel_solid, _conical_vessel_shell,
 )
 from src.paratan.viewer.revolve import Profile
-from src.paratan.viewer.inspection import tally_configuration
+from src.paratan.viewer.results import tally_configuration
 
 
 class DeviceAdapter(Protocol):
@@ -30,6 +30,20 @@ class SimpleMirrorAdapter:
             c.meta['_tally_path'], c.meta['_tally_entries'] = path, entries
         return parts
 
+
+class FfhAdapter:
+    """Simple-mirror body plus radial blanket inlet/outlet pipes (FFH viz case)."""
+
+    kind = 'ffh'
+
+    def build_components(self, data, n_theta):
+        from src.paratan.viewer.port_openings import build_blanket_inlet_outlet_meshes
+        parts = build_simple_mirror_components(data, n_theta=n_theta)
+        parts.extend(build_blanket_inlet_outlet_meshes(data, n_theta=n_theta))
+        for c in parts:
+            path, entries = tally_configuration(data, c)
+            c.meta['_tally_path'], c.meta['_tally_entries'] = path, entries
+        return parts
 
 
 class TandemAdapter:
@@ -146,10 +160,53 @@ class TandemAdapter:
             profile=Profile.polygon([(0,lo-t),(ro,lo-t),(ro,hi+t),(0,hi+t),(0,hi),(ro-t,hi),(ro-t,lo),(0,lo)])
             add(f'end_cell_{key}_shell','ends',end['shell_material'],profile,{'z0_cm':zc,'axial_length_cm':L})
             add(f'end_cell_{key}_inner','ends',end['inner_material'],Profile.rect(0,ro-t,lo,hi),opacity=.15)
+
+        ports = data.get('ports') or {}
+        if ports.get('ports_present'):
+            from src.paratan.viewer.port_openings import TandemPortOpenings
+            openings = TandemPortOpenings(data)
+            inner_radius = float(ports.get('inner_radius', 25))
+            x_limit = float(ports.get('port_x_limits', 400))
+            radii = [inner_radius, *(inner_radius + np.cumsum(ports.get('port_layers_thicknesses', [])))]
+            materials = ['vacuum', *ports.get('port_layers_materials', [])]
+            if len(radii) != len(materials):
+                raise ValueError('Each port wall thickness must have a material')
+            for plug in ('left', 'right'):
+                for angle_name, angle in (('pos', 45.0), ('neg', -45.0)):
+                    for i, (radius, material) in enumerate(zip(radii, materials)):
+                        ri = 0.0 if i == 0 else float(radii[i - 1])
+                        tube = openings.arms(plug, ri, float(radius), angle, max(64, n_theta // 2))
+                        name = (
+                            f'port_{plug}_{angle_name}_layer_0' if i == 0
+                            else f'port_{plug}_{angle_name}_layer_{i}'
+                        )
+                        _add(
+                            parts,
+                            name=name,
+                            group='ports',
+                            material=str(material),
+                            mesh=tube,
+                            meta={
+                                'tilt_deg': angle,
+                                'plug_side': plug,
+                                'r_inner_cm': ri,
+                                'r_outer_cm': float(radius),
+                                'x_limits_cm': [-x_limit, x_limit],
+                                'plasma_clipped': True,
+                                '_tally_entries': [],
+                                '_tally_path': '',
+                            },
+                            opacity=0.0 if i == 0 else 1.0,
+                        )
+                        parts[-1].label = name.replace('_', ' ').capitalize()
         return parts
 
 
-ADAPTERS = {'simple_mirror': SimpleMirrorAdapter(), 'tandem': TandemAdapter()}
+ADAPTERS = {
+    'simple_mirror': SimpleMirrorAdapter(),
+    'ffh': FfhAdapter(),
+    'tandem': TandemAdapter(),
+}
 
 
 def adapter_for(data):

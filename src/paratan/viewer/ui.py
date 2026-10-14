@@ -1,14 +1,34 @@
 """Trame presentation layer. Widgets dispatch application actions."""
 from __future__ import annotations
+
 import base64
+import hashlib
 from pathlib import Path
+
 from trame.ui.vuetify3 import SinglePageLayout
 from trame.widgets import client, html, vuetify3 as vuetify
-from pyvista.trame.ui import plotter_ui
-from src.paratan.viewer.model import GROUPS, MODE_LABELS
-from src.paratan.viewer.labels import GROUP_LABELS
 from trame_client.widgets.core import AbstractElement
-from src.paratan.viewer import transport
+from pyvista.trame.ui import plotter_ui
+
+from src.paratan.viewer.components import GROUP_LABELS
+from src.paratan.viewer.model import GROUPS, MODE_LABELS
+
+
+class _Transport:
+    """Static asset registration formerly in transport.py."""
+
+    static_path = Path(__file__).with_name("static")
+    _asset_fingerprint = hashlib.sha256(
+        (static_path / "transport.js").read_bytes()
+        + (static_path / "dropzone.js").read_bytes()
+    ).hexdigest()[:12]
+    asset_key = "paratan-viewer-" + _asset_fingerprint
+    serve = {asset_key: str(static_path)}
+    scripts = [f"{asset_key}/transport.js", f"{asset_key}/dropzone.js"]
+    vue_use = ["paratan_transport"]
+
+
+transport = _Transport()
 
 # Brand tokens from docs/logo/README.txt
 _UW_RED = "#C5050C"
@@ -217,7 +237,7 @@ class ViewerUI:
         with html.Div(v_if="device_under_construction", classes="mb-3",
                       style="padding:10px 12px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;color:#92400e;"):
             html.Div('Under construction', style='font-size:12px;font-weight:600;')
-            html.Div('Tandem and VNS previews are incomplete and still being developed.',
+            html.Div('VNS previews are incomplete and still being developed.',
                      style='font-size:11px;margin-top:4px;')
         upload_event = (
             "const input = $event.target; const f = input.files[0]; if (f && !upload_busy) { "
@@ -268,7 +288,7 @@ class ViewerUI:
         with html.Details(classes='mt-2'):
             html.Summary('Example devices', style='font-size:11px;color:#64748b;cursor:pointer;')
             with html.Div(classes='d-flex flex-wrap mt-2', style='gap:4px;'):
-                for key, label in [('simple','Simple mirror'),('tandem','Tandem · Under construction'),('tandem_vns','Tandem VNS · Under construction')]:
+                for key, label in [('simple','Simple mirror'),('ffh','FFH'),('tandem','Tandem'),('tandem_vns','Tandem VNS · Under construction')]:
                     vuetify.VBtn(label, click=(self.ctrl.load_example, f"['{key}']"), disabled=('upload_busy',), size='x-small', variant='tonal')
         html.A('Download model manifest', href=('manifest_url',), download='display-manifest.json', classes='text-caption d-block mt-2')
         html.Div(classes="mb-3")

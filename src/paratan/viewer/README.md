@@ -73,20 +73,24 @@ Blank canvas: `--render server`, then hard-refresh (`Ctrl+Shift+R`).
 
 | Module | Role |
 |--------|------|
-| `__main__.py` | CLI; applies GL env before VTK |
-| `app.py` | Trame app, uploads, presets |
-| `model.py` | Cutaway cache, groups |
-| `devices.py` | Device adapters |
+| `__main__.py` / `gl_env.py` | CLI; GL env before VTK |
+| `app.py` | Trame app, uploads, presets, materials catalog |
+| `ui.py` | Browser chrome + client transport helpers |
+| `scene.py` | VTK actors, slices, overlays |
+| `model.py` | Cutaway cache, `SceneState` / actions |
+| `devices.py` | Device adapters (simple / FFH / tandem) |
+| `components.py` | `ComponentMesh`, labels, material colors |
 | `simple_mirror_meshes.py` | YAML → axisymmetric meshes |
 | `port_openings.py` | NBI / radial port meshes + surface trims |
-| `scene.py` / `ui.py` | VTK scene / browser chrome |
-| `results.py` / `tally_overlay.py` | Statepoint overlays |
+| `revolve.py` | Analytic `(r,z)` profiles and sections |
+| `results.py` | Cyl grids, tally overlays, statepoint datasets |
+| `manifest.py` | Display / simulation identity JSON (no VTK) |
 
 Deeper boundaries: [`docs/viewer_architecture.md`](../../../docs/viewer_architecture.md).
 Tests: `tests/test_viewer_*.py`.
 
 ## Scope
 
-- **Supported:** simple mirror (conical / perpendicular VV), tandem display geometry
+- **Supported:** simple mirror (conical / perpendicular VV), FFH inlet/outlet pipes, tandem display geometry
 - **Partial:** tandem VNS (envelope / under construction in UI)
 - **Not:** full OpenMC CSG parity for every boolean exclusion

@@ -8,6 +8,8 @@ Performance model
   move instead of the whole machine.
 """
 from __future__ import annotations
+from copy import deepcopy
+from dataclasses import dataclass
 
 import asyncio
 import base64
@@ -17,7 +19,8 @@ import json
 from collections import OrderedDict
 from time import perf_counter
 from pathlib import Path
-from typing import Any
+import re
+from typing import Any, Iterable, Protocol, runtime_checkable
 
 import numpy as np
 import pyvista as pv
@@ -25,18 +28,13 @@ import yaml
 from PIL import Image
 from trame.app import get_server
 
-from src.paratan.viewer.components import ComponentMesh, color_for_material
-from src.paratan.viewer.model import Model, build_model, GROUPS, MODES, MAX_UPLOAD_BYTES, BODY_STYLE, EDGE_COLOR, SLICE_WEDGE, is_shown
+from src.paratan.viewer.components import ComponentMesh, color_for_material, GROUP_LABELS, material_label, meta_row
+from src.paratan.viewer.model import Model, build_model, GROUPS, MODES, MAX_UPLOAD_BYTES, BODY_STYLE, EDGE_COLOR, SLICE_WEDGE, is_shown, SceneState, SceneActions, TrameStateBridge
 from src.paratan.viewer.model import _set_shown
 from src.paratan.viewer.ui import ViewerUI
 from src.paratan.viewer.scene import SceneController
-from src.paratan.viewer.state import SceneState, SceneActions, TrameStateBridge
 from src.paratan.viewer.manifest import ModelManifest, component_id
-from src.paratan.viewer.results import load_statepoint, TallyDataset
-from src.paratan.viewer.presets import validate_view
-from src.paratan.viewer.inspection import setup_example, tally_configuration
-from src.paratan.viewer.labels import GROUP_LABELS, material_label, meta_row
-from src.paratan.viewer.materials_catalog import MaterialCatalog, default_catalog
+from src.paratan.viewer.results import load_statepoint, TallyDataset, setup_example, tally_configuration
 
 def _rgb_css(rgb: tuple[float, float, float]) -> str:
     r, g, b = (int(255 * c) for c in rgb)
@@ -213,7 +211,9 @@ class ViewerApp(ViewerUI):
         s.n_components = len(model.components)
         s.model_name = model.name
         s.device_label = model.device_label
-        s.device_under_construction = model.manifest.device == 'tandem'
+        # Normal tandem is viewable; VNS (test_region / test_modules) is still WIP.
+        cc = model.data.get('central_cell') or {}
+        s.device_under_construction = bool(cc.get('test_region') or cc.get('test_modules'))
         s.manifest_url = "data:application/json;base64," + base64.b64encode(json.dumps(model.manifest.to_dict()).encode()).decode()
         s.explode, s.section_mode = 0.0, "none"
         s.preview_tally = s.demo_heating = False
@@ -632,8 +632,12 @@ class ViewerApp(ViewerUI):
         return {'phase': phase, 'message': message}
 
     def load_example(self, kind: str) -> None:
-        files = {'simple': 'simple_parametric_input_new.yaml', 'tandem': 'tandem_parametric_input.yaml',
-                 'tandem_vns': 'tandem_vns_parametric_input.yaml'}
+        files = {
+            'simple': 'simple_parametric_input_new.yaml',
+            'ffh': 'ffh_parametric_input.yaml',
+            'tandem': 'tandem_parametric_input.yaml',
+            'tandem_vns': 'tandem_vns_parametric_input.yaml',
+        }
         if kind not in files:
             self._upload_status('error', 'Unknown example device.')
             return
@@ -903,3 +907,261 @@ def run_app(input_yaml: str | Path, *, host: str = "127.0.0.1", port: int = 8080
         exec_mode="main",
         timeout=timeout,
     )
+
+
+# --- saved-view validation (merged from presets.py) ---
+
+def validate_view(view, components):
+    if not isinstance(view, dict):
+        raise ValueError('A saved view must be an object')
+    result = deepcopy(view)
+    camera = np.asarray(view.get('camera'), dtype=float)
+    if camera.shape != (3,3) or not np.isfinite(camera).all():
+        raise ValueError('Invalid camera')
+    if np.linalg.norm(camera[0]-camera[1]) < 1e-9 or np.linalg.norm(camera[2]) < 1e-9:
+        raise ValueError('Invalid camera direction')
+    result['camera'] = camera.tolist()
+    for key, default, lo, hi in [('explode',0,0,1),('demo_opacity',1,0,1),
+                                 ('parallel_scale',1,1e-12,np.inf),('view_angle',30,1,179)]:
+        value = float(view.get(key,default))
+        if not np.isfinite(value) or not lo <= value <= hi:
+            raise ValueError(f'Invalid {key}')
+        result[key] = value
+    if view.get('section','none') not in ('none','half','quarter'):
+        raise ValueError('Unknown section')
+    if view.get('result_quantity','mean') not in ('mean','std_dev','relative_error'):
+        raise ValueError('Unknown result quantity')
+    index = int(view.get('tally_mesh_index',0))
+    if index < 0:
+        raise ValueError('Invalid tally mesh index')
+    result['tally_mesh_index'] = index
+    selection = view.get('selected','')
+    if selection and selection not in components:
+        raise ValueError('Saved component does not exist in this model')
+    for key in ('groups','opacity','slice'):
+        if not isinstance(view.get(key,{}),dict):
+            raise ValueError(f'Invalid {key}')
+    for name,value in view.get('opacity',{}).items():
+        if name not in components or not np.isfinite(float(value)) or not 0 <= float(value) <= 1:
+            raise ValueError('Invalid component opacity')
+    for key in ('phi','z'):
+        if not np.isfinite(float(view.get('slice',{}).get(key,0))):
+            raise ValueError('Invalid slice position')
+    if not isinstance(view.get('hidden',[]),list) or any(n not in components for n in view.get('hidden',[])):
+        raise ValueError('Invalid hidden component list')
+    return result
+
+
+# --- materials catalog (merged from materials_catalog.py) ---
+# Material catalog (merged from materials_catalog.py)
+
+import re
+from dataclasses import dataclass
+from typing import Any, Iterable, Protocol, runtime_checkable
+
+
+@dataclass(frozen=True)
+class CompositionLine:
+    """One nuclide or element entry in a material definition."""
+
+    symbol: str
+    fraction: float
+    fraction_type: str  # OpenMC percent_type: ao, wo, ...
+
+
+@dataclass(frozen=True)
+class MaterialRecord:
+    """Normalized material description, independent of the data source."""
+
+    key: str
+    display_name: str
+    density: float | None
+    density_units: str | None
+    openmc_id: int | None
+    composition: tuple[CompositionLine, ...]
+    source: str
+    aliases: tuple[str, ...] = ()
+    notes: str = ""
+
+    def to_summary(self) -> dict[str, Any]:
+        dens = None
+        if self.density is not None:
+            unit = self.density_units or ""
+            dens = f"{self.density:g} {unit}".strip()
+        return {
+            "key": self.key,
+            "label": self.display_name,
+            "density": dens or "—",
+            "n_lines": len(self.composition),
+            "openmc_id": self.openmc_id,
+        }
+
+    def to_detail(self) -> dict[str, Any]:
+        lines = sorted(self.composition, key=lambda c: c.fraction, reverse=True)
+        return {
+            "key": self.key,
+            "label": self.display_name,
+            "source": self.source,
+            "density": self.density,
+            "density_units": self.density_units or "",
+            "openmc_id": self.openmc_id,
+            "notes": self.notes,
+            "composition": [
+                {
+                    "symbol": line.symbol,
+                    "fraction": line.fraction,
+                    "fraction_type": line.fraction_type,
+                    "percent": 100.0 * line.fraction,
+                }
+                for line in lines
+            ],
+        }
+
+
+@runtime_checkable
+class MaterialCatalog(Protocol):
+    """Read-only material library used by the viewer."""
+
+    @property
+    def source_label(self) -> str: ...
+
+    def ensure_loaded(self) -> None:
+        """Eagerly build the index (may import heavy modules)."""
+
+    def list_records(self) -> list[MaterialRecord]: ...
+
+    def get(self, key: str) -> MaterialRecord | None: ...
+
+    def resolve(self, name: str) -> MaterialRecord | None:
+        """Best-effort match by display name, alias, or key."""
+
+
+def _slug(text: str) -> str:
+    text = text.strip().lower()
+    text = re.sub(r"[^a-z0-9]+", "_", text)
+    return text.strip("_") or "material"
+
+
+def record_from_openmc_material(
+    mat: Any,
+    *,
+    key: str,
+    source: str,
+    aliases: Iterable[str] = (),
+) -> MaterialRecord:
+    """Convert an ``openmc.Material`` into a ``MaterialRecord``."""
+    composition: list[CompositionLine] = []
+    for entry in getattr(mat, "nuclides", ()) or ():
+        composition.append(
+            CompositionLine(
+                symbol=str(entry.name),
+                fraction=float(entry.percent),
+                fraction_type=str(entry.percent_type),
+            )
+        )
+    density = getattr(mat, "density", None)
+    try:
+        density_f = float(density) if density is not None else None
+    except (TypeError, ValueError):
+        density_f = None
+    mid = getattr(mat, "id", None)
+    try:
+        mid_i = int(mid) if mid is not None else None
+    except (TypeError, ValueError):
+        mid_i = None
+    display = str(getattr(mat, "name", None) or key)
+    alias_set = {_slug(a) for a in aliases if a} | {_slug(display), _slug(key)}
+    return MaterialRecord(
+        key=key,
+        display_name=display,
+        density=density_f,
+        density_units=str(getattr(mat, "density_units", "") or "") or None,
+        openmc_id=mid_i,
+        composition=tuple(composition),
+        source=source,
+        aliases=tuple(sorted(a for a in alias_set if a and a != key)),
+    )
+
+
+class OpenMCMaterialsModuleCatalog:
+    """Catalog backed by ``src.paratan.materials.material`` module objects."""
+
+    SOURCE = "paratan.materials.material"
+
+    def __init__(self, module: Any | None = None) -> None:
+        self._module = module
+        self._by_key: dict[str, MaterialRecord] = {}
+        self._alias_index: dict[str, str] = {}
+        self._loaded = False
+
+    @property
+    def source_label(self) -> str:
+        return self.SOURCE
+
+    def ensure_loaded(self) -> None:
+        if self._loaded:
+            return
+        module = self._module
+        if module is None:
+            from src.paratan.materials import material as module  # lazy: openmc + matplotlib
+            self._module = module
+        records: dict[str, MaterialRecord] = {}
+        # Prefer the curated list; fall back to scanning module attributes.
+        materials = list(getattr(module, "materials_list", []) or [])
+        attr_names: dict[int, str] = {}
+        for name, value in vars(module).items():
+            if self._is_openmc_material(value):
+                attr_names[id(value)] = name
+        if not materials:
+            materials = [v for v in vars(module).values() if self._is_openmc_material(v)]
+        seen: set[int] = set()
+        for mat in materials:
+            if id(mat) in seen:
+                continue
+            seen.add(id(mat))
+            attr = attr_names.get(id(mat))
+            display = str(getattr(mat, "name", None) or attr or "material")
+            key = _slug(attr or display)
+            # Disambiguate duplicate slugs.
+            base, n = key, 2
+            while key in records:
+                key = f"{base}_{n}"
+                n += 1
+            aliases = [attr, display] if attr else [display]
+            records[key] = record_from_openmc_material(
+                mat, key=key, source=self.SOURCE, aliases=aliases
+            )
+        self._by_key = dict(sorted(records.items(), key=lambda kv: kv[1].display_name.lower()))
+        alias_index: dict[str, str] = {}
+        for key, rec in self._by_key.items():
+            alias_index[key] = key
+            for alias in rec.aliases:
+                alias_index.setdefault(alias, key)
+            alias_index.setdefault(_slug(rec.display_name), key)
+        self._alias_index = alias_index
+        self._loaded = True
+
+    @staticmethod
+    def _is_openmc_material(value: Any) -> bool:
+        cls = type(value)
+        return cls.__module__.startswith("openmc") and cls.__name__ == "Material"
+
+    def list_records(self) -> list[MaterialRecord]:
+        self.ensure_loaded()
+        return list(self._by_key.values())
+
+    def get(self, key: str) -> MaterialRecord | None:
+        self.ensure_loaded()
+        return self._by_key.get(key)
+
+    def resolve(self, name: str) -> MaterialRecord | None:
+        self.ensure_loaded()
+        if not name:
+            return None
+        key = self._alias_index.get(_slug(name))
+        return self._by_key.get(key) if key else None
+
+
+def default_catalog() -> MaterialCatalog:
+    """Factory used by the viewer; swap here when a new backend lands."""
+    return OpenMCMaterialsModuleCatalog()
