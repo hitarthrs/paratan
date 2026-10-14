@@ -1,16 +1,18 @@
-# paratan
+<p align="center">
+  <img src="docs/logo/paratan-lockup-tagline.svg" alt="ParaTAN — Parametric Neutronics for Magnetic Mirrors" width="520" />
+</p>
 
 **Paratan** is a lightweight OpenMC wrapper designed for rapid parametric modeling of tandem mirror fusion devices. It simplifies geometry construction, material assignment, and source specification, enabling easy setup and iteration of neutronics simulations. Built for early-stage design and analysis, **Paratan** helps researchers and engineers explore design spaces efficiently.
 
 ## Example Schematics
 
-Example Simple mirror cross-section:
+Example Simple mirror cutaway:
 
-<img src="examples/processed/simple_mirror_cross_section_rotated.png" alt="Simple mirror model schematic" width="600" />
+<img src="examples/processed/simple_mirror_cutaway.png" alt="Simple mirror model schematic" width="600" />
 
-Example Tandem mirror cross-section:
+Example Tandem mirror cutaway:
 
-<img src="examples/processed/tandem_mirror_cross_section_rotated.png" alt="Tandem mirror model schematic" width="600" />
+<img src="examples/processed/tandem_mirror_cutaway.png" alt="Tandem mirror model cutaway" width="600" />
 
 # 🐳 Setting Up the Environment with Docker
 
@@ -102,6 +104,21 @@ The simulation configuration is defined in YAML files located in the `input_file
    ```
 
 The simulation will create output files in the specified output directory, including OpenMC statepoint files and other results. The build-only mode generates the complete set of OpenMC input files without running the simulation.
+
+## Interactive device viewer
+
+Trame + PyVista geometry studio for parametric YAML devices (cutaways, picking,
+materials, optional OpenMC statepoint overlays).
+
+```bash
+# from repo root, after activating the paratan conda env
+./view_simple_mirror.py
+# or
+PYTHONPATH=. python -m src.paratan.viewer -i input_files/tandem_parametric_input.yaml
+```
+
+Setup, dependencies, flags, and troubleshooting: [`src/paratan/viewer/README.md`](src/paratan/viewer/README.md).  
+Architecture and result loading: [`docs/viewer_architecture.md`](docs/viewer_architecture.md).
 
 # Model Setup
 

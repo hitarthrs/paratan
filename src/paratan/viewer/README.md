@@ -1,57 +1,92 @@
 # ParaTAN Viewer
 
-Interactive 3D viewer for ParaTAN simple-mirror geometry (Trame + PyVista).
-Loads a parametric YAML, builds revolved CSG-style meshes, and serves a browser UI
-for cutaways, component picking, and optional OpenMC statepoint overlays.
+Interactive 3D geometry studio (Trame + PyVista) for ParaTAN YAML devices.
+Builds analytic revolved meshes from the input, serves a browser UI for cutaways,
+component picking, and optional OpenMC statepoint overlays.
 
-## Run
+## Dependencies
 
-From the `paratan-development` repo root:
+Use the repo conda environment ([`environment.yml`](../../../environment.yml)).
+Viewer-critical packages:
+
+| Package | Role |
+|---------|------|
+| `pyvista`, `vtk` | Mesh generation / rendering |
+| `trame`, `trame-vtk`, `trame-vuetify` | Browser UI + WebGL bridge |
+| `pyyaml`, `numpy` | Input parsing / numerics |
 
 ```bash
-PYTHONPATH=. python -m src.paratan.viewer \
-  --input input_files/simple_parametric_input_new.yaml
+# from repository root
+conda env create -f environment.yml          # first time
+conda activate paratan
+# or: conda env update -f environment.yml --prune
 ```
 
-Then open `http://127.0.0.1:8080/`.
+Headless / remote sessions often need OSMesa or a display. The launcher applies
+GL workarounds via `gl_env.py` before VTK imports; do not import PyVista first.
 
-Useful flags:
+OpenMC is **not** required to browse analytic geometry. It is required only when
+loading a statepoint through **OpenMC results**.
+
+## Launch
+
+From the repository root (so `PYTHONPATH` resolves `src`):
+
+```bash
+# default: simple_parametric_input_new.yaml on http://127.0.0.1:8080/
+./view_simple_mirror.py
+
+# explicit module entry (same CLI)
+PYTHONPATH=. python -m src.paratan.viewer \
+  --input input_files/simple_parametric_input_new.yaml
+
+# tandem example
+PYTHONPATH=. python -m src.paratan.viewer \
+  -i input_files/tandem_parametric_input.yaml
+```
+
+`view_simple_mirror.py` forwards all CLI flags to the module entry point.
 
 | Flag | Default | Notes |
 |------|---------|--------|
-| `-i / --input` | `input_files/simple_parametric_input_new.yaml` | Simple-mirror YAML |
+| `-i` / `--input` | `input_files/simple_parametric_input_new.yaml` | Device YAML |
 | `--host` / `--port` | `127.0.0.1` / `8080` | Bind address |
-| `--n-theta` | `96` | Angular tessellation (lower = faster) |
-| `--render` | `trame` | `trame` (snappy), `server` (if blank canvas), `client` |
-| `--timeout` | `2` | Exit this many seconds after the last browser tab closes (`0` = keep alive) |
+| `--n-theta` | `96` | Angular tessellation (lower = faster load) |
+| `--render` | `trame` | `trame` (local WebGL), `server`, `client` |
+| `--timeout` | `2` | Exit seconds after last tab closes (`0` = keep alive) |
 | `--no-browser` | off | Do not auto-open a tab |
 
-If the canvas is blank: try `--render server`, then hard-refresh (`Ctrl+Shift+R`).
+Blank canvas: `--render server`, then hard-refresh (`Ctrl+Shift+R`).
+
+## Usage notes
+
+- Switch devices with the upload control or **Example devices** in the sidebar.
+- Vacuum vessel styles for simple mirrors: `geometry_style: conical` or `perpendicular`.
+- Toolbar: full / half / quarter cutaways and camera controls.
+- **Geometry**: group visibility, Solo / Hide, material legend.
+- **Inspect**: dimensions, tally config, cylindrical cages, φ/z slices.
+- **OpenMC results**: statepoint + matching `simulation-manifest.json` (exported by
+  the simple/tandem builders). Heating remains eV/source; no auto power normalize.
+- Presets write next to the launch YAML as `<input>.viewer.json`.
 
 ## Layout
 
 | Module | Role |
 |--------|------|
-| `__main__.py` | CLI entry; applies GL env before VTK import |
-| `app.py` | Trame app, state bridge, upload / presets |
-| `model.py` | Device model, groups, visibility |
-| `simple_mirror_meshes.py` | YAML → component meshes |
-| `scene.py` | PyVista scene / cutaways / camera |
-| `ui.py` | Browser UI |
-| `results.py` / `tally_overlay.py` | Statepoint + tally overlays |
-| `state.py` | Scene state + actions |
-| `geometry helpers` | `revolve.py`, `cyl_grid.py`, `mesh_primitives.py`, `port_openings.py` |
+| `__main__.py` | CLI; applies GL env before VTK |
+| `app.py` | Trame app, uploads, presets |
+| `model.py` | Cutaway cache, groups |
+| `devices.py` | Device adapters |
+| `simple_mirror_meshes.py` | YAML → axisymmetric meshes |
+| `port_openings.py` | NBI / radial port meshes + surface trims |
+| `scene.py` / `ui.py` | VTK scene / browser chrome |
+| `results.py` / `tally_overlay.py` | Statepoint overlays |
 
-Heavy viz deps are imported lazily so non-viewer code can import the package lightly.
+Deeper boundaries: [`docs/viewer_architecture.md`](../../../docs/viewer_architecture.md).
+Tests: `tests/test_viewer_*.py`.
 
-## Develop here next
+## Scope
 
-1. Prefer editing `model.py` / `simple_mirror_meshes.py` for geometry, `scene.py` / `ui.py` for UX.
-2. Saved camera presets land next to the input YAML as `<input>.viewer.json`.
-3. Viewer-focused tests live under `tests/test_viewer_*.py` (repo root).
-4. Keep GL setup in `gl_env.py` — it must run before any PyVista/VTK import.
-
-## Scope today
-
-- **Supported:** simple mirror from ParaTAN YAML
-- **Not yet:** full tandem-mirror parity in this UI
+- **Supported:** simple mirror (conical / perpendicular VV), tandem display geometry
+- **Partial:** tandem VNS (envelope / under construction in UI)
+- **Not:** full OpenMC CSG parity for every boolean exclusion
